@@ -23,14 +23,10 @@ A CRM app you install on your phone like a normal app, with **no Play Store, no 
 **New in Phase 4**
 - **Directions**: every contact with an address gets a one-tap "Directions" button that opens it in Google Maps
 - **Documents**: attach files (contracts, IDs, photos) to any contact under a new "Docs" tab — stored on-device, download or remove anytime (8 MB per file limit to keep things fast)
-- **PIN lock**: set a 4-digit PIN under More → Security. When set, the app shows a lock screen on open until the correct PIN is entered
 
 All planned CRM features are now built. The only thing left on the original roadmap is wrapping this into a real native `.apk` (see below) — that's the natural next phase whenever you're ready.
 
 Fully offline after first load (installable as a real app icon).
-
-## A note on the PIN lock
-This is a straightforward on-device PIN, not biometric — true fingerprint/face unlock needs OS-level APIs that a browser-based PWA can't fully reach, that's a native-app (Capacitor) feature. There is also **no PIN recovery**: forgetting it means clearing the app's site data on your phone to get back in, which deletes everything, so keep it written down somewhere safe. It stops someone picking up your unlocked phone from opening the app; it isn't encryption of the underlying data.
 
 ## A note on reminders
 Since this is a browser-based app (not yet the native APK), reminders only fire reliably **while the app is open** — a phone browser can't wake itself up in the background the way an installed native app can. If you turn on "Remind me" for an item, the app will ask for notification permission the first time, then try to notify you if you have the app open (or recently open) when the time arrives. The agenda itself will always show anything overdue the moment you open it, regardless of notifications. True background push reminders are one of the things the native APK will unlock.

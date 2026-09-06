@@ -140,10 +140,8 @@ const DB = {
     const events = await Events.getAll();
     const invoices = await Invoices.getAll();
     const settings = await Settings.get();
-    // Don't leak the PIN hash/salt into an exported backup file.
-    const { pinHash, pinSalt, ...safeSettings } = settings;
     const documents = await getAllFromStore(STORE_DOCS);
-    return JSON.stringify({ exportedAt: new Date().toISOString(), contacts, events, invoices, documents, settings: safeSettings }, null, 2);
+    return JSON.stringify({ exportedAt: new Date().toISOString(), contacts, events, invoices, documents, settings }, null, 2);
   },
 };
 
@@ -283,7 +281,6 @@ const Settings = {
       req.onsuccess = () => resolve(req.result ? req.result.value : {
         businessName: "", address: "", phone: "", email: "",
         currency: "USD", logoDataUrl: "", invoiceCounter: 0, proposalCounter: 0,
-        pinHash: "", pinSalt: "",
       });
       req.onerror = () => reject(req.error);
     });
@@ -294,37 +291,6 @@ const Settings = {
     const updated = { ...current, ...patch };
     await withStore(STORE_SETTINGS, "readwrite", (store) => store.put({ key: "business", value: updated }));
     return updated;
-  },
-};
-
-// ---------------- PIN lock ----------------
-async function sha256Hex(text) {
-  const data = new TextEncoder().encode(text);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-const Security = {
-  async isLocked() {
-    const s = await Settings.get();
-    return !!s.pinHash;
-  },
-
-  async setPin(pin) {
-    const salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((b) => b.toString(16).padStart(2, "0")).join("");
-    const pinHash = await sha256Hex(salt + pin);
-    await Settings.update({ pinSalt: salt, pinHash });
-  },
-
-  async removePin() {
-    await Settings.update({ pinSalt: "", pinHash: "" });
-  },
-
-  async verify(pin) {
-    const s = await Settings.get();
-    if (!s.pinHash) return true;
-    const attempt = await sha256Hex((s.pinSalt || "") + pin);
-    return attempt === s.pinHash;
   },
 };
 
