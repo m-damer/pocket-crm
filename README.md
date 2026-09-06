@@ -1,25 +1,28 @@
-# Cyberomeda CRM — Phase 2
+# Cyberomeda CRM — Phase 3
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
 ## What works right now
 
 **Contacts (Phase 1)**
-- Add, edit, delete contacts
-- Categorize as Customer / Lead / Lost, with color coding
-- Search and filter, tags, notes, address
-- Activity log per contact
+- Add, edit, delete contacts — Customer / Lead / Lost categories, color-coded
+- Search and filter, tags, notes, address, activity log
 - One-tap call / SMS / email
-- Export all data as a JSON backup file
 
-**Schedule (Phase 2 — new)**
-- Add tasks or meetings with a date, time, and optional notes
-- Link any item to one of your contacts — it then shows up under that contact's "Upcoming" section too
-- Agenda grouped by day (Today / Tomorrow / etc.), with filters for Upcoming / Today / Completed / All
-- Tap the circle to mark a task done
-- Optional reminders — see the note below on how these work
+**Schedule (Phase 2)**
+- Tasks and meetings with date, time, and optional reminder
+- Agenda grouped by day, filters for Upcoming / Today / Completed / All
+- Link any item to a contact — shows under that contact's "Upcoming" section
 
-Invoices and Maps tabs are visible as a preview of what's coming, but aren't wired up yet.
+**Invoices & Proposals (Phase 3 — new)**
+- Set up your **business profile** once (name, address, phone, email, currency, logo) under More — it appears on every document
+- Create invoices or proposals with line items (description, qty, price) — the total calculates live
+- Auto-numbered (INV-0001, PRO-0001, ...) so numbers are never reused
+- Link a document to a contact — pulls in their name, company, phone, email automatically
+- Status tracking: Draft → Sent → Paid (invoices) or Draft → Sent → Accepted (proposals)
+- Clean on-screen preview, and a real **PDF export** — on Android this opens the share sheet so you can send it straight to WhatsApp, email, etc.; if sharing isn't available it downloads the PDF instead
+
+Maps/route planning and PIN/biometric lock are still to come (Phase 4).
 
 Fully offline after first load (installable as a real app icon).
 
@@ -52,8 +55,9 @@ Everything is stored on your phone only (in the browser's local database). Nothi
 ## Updating after this and future phases
 Once your repo is already live on GitHub Pages, updating is simpler than the first setup:
 1. Go to your repo → open the file that changed (e.g. `index.html`, or a file inside `css/`, `js/`) → click the pencil (Edit) icon, or use "Add file → Upload files" and drag in the replacement file — GitHub will offer to overwrite the existing one.
-2. Commit the change. Pages redeploys automatically in under a minute.
-3. On your phone, close the app fully and reopen it (or pull to refresh) — it may take one extra reload for the offline cache to pick up the new version, since the app is designed to work offline and briefly prefers its cached copy.
+2. Commit directly to `main` (no need for a pull request, since it's just you).
+3. Pages redeploys automatically in under a minute.
+4. On your phone, close the app fully and reopen it (or pull to refresh) — it may take one extra reload for the offline cache to pick up the new version, since the app is designed to work offline and briefly prefers its cached copy.
 
 ## Path to a real installable `.apk` later
 This app was deliberately built as plain HTML/CSS/JS (no framework) so it can be wrapped later with **Capacitor** into a real native Android app almost unchanged — that will let it get its own APK file, plus access to things like the camera, contacts import, and biometric lock, which a browser-only PWA can't fully do. That's planned for a later phase once the feature set is more complete.

@@ -462,6 +462,126 @@ input, select, textarea { font-family: inherit; }
 .event-sub { font-size: 12.5px; color: var(--text-muted); margin: 0; }
 .event-badge { flex-shrink: 0; }
 
+/* ---------- Invoices ---------- */
+.invoice-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.invoice-icon {
+  width: 42px; height: 42px;
+  border-radius: 10px;
+  background: var(--navy);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px;
+  flex-shrink: 0;
+}
+.hint-text { font-size: 12px; color: var(--text-muted); margin: 8px 2px 0; }
+
+.status-opt {
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  margin-right: 6px;
+}
+.status-opt:last-child { margin-right: 0; }
+
+.item-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+.item-row .it-desc { flex: 2; min-width: 0; }
+.item-row .it-qty { flex: 0.7; min-width: 0; }
+.item-row .it-price { flex: 1; min-width: 0; }
+.item-row input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 8px;
+  font-size: 13.5px;
+  background: var(--surface);
+  color: var(--text);
+}
+.it-remove {
+  width: 32px; height: 32px;
+  flex-shrink: 0;
+  border: none;
+  background: #FDF1F1;
+  color: #B3261E;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.it-remove svg { width: 16px; height: 16px; }
+.btn-add-item {
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.inv-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 4px 16px 8px;
+  padding: 12px 14px;
+  background: var(--navy);
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* invoice document preview */
+.invoice-doc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin: 8px 16px 0;
+  padding: 20px 18px;
+}
+.invoice-doc-header { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+.invoice-logo { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+.invoice-biz-name { font-size: 16px; font-weight: 700; margin: 0 0 2px; color: var(--navy); }
+.invoice-biz-line { font-size: 12px; color: var(--text-muted); margin: 0; }
+.invoice-doc-meta {
+  display: flex; flex-wrap: wrap; gap: 16px;
+  padding: 12px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.invoice-doc-meta .label, .invoice-bill-to .label, .invoice-notes .label { font-size: 11px; color: var(--text-muted); font-weight: 650; margin: 0 0 2px; }
+.invoice-doc-meta .value, .invoice-bill-to .value, .invoice-notes .value { font-size: 13.5px; margin: 0; }
+.invoice-bill-to { margin-bottom: 16px; }
+.invoice-bill-to .value { margin-bottom: 1px; }
+.invoice-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.invoice-table th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em;
+  color: #fff; background: var(--navy); padding: 8px 8px; font-weight: 650;
+}
+.invoice-table th:last-child, .invoice-table td:last-child { text-align: right; }
+.invoice-table td { padding: 8px 8px; border-bottom: 1px solid var(--border); }
+.invoice-table tfoot td { font-weight: 700; border-bottom: none; padding-top: 12px; color: var(--navy); }
+.invoice-notes { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+
 /* ---------- Placeholder (coming soon) screens ---------- */
 .placeholder {
   display: flex; flex-direction: column; align-items: center; justify-content: center;

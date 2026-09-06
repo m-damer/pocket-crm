@@ -1,4 +1,4 @@
-const CACHE_NAME = "crm-cache-v2";
+const CACHE_NAME = "crm-cache-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,7 +7,9 @@ const ASSETS = [
   "./js/db.js",
   "./js/contacts.js",
   "./js/schedule.js",
+  "./js/invoices.js",
   "./js/app.js",
+  "./js/vendor/jspdf.umd.min.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png",

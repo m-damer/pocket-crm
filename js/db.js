@@ -1,9 +1,11 @@
 // Simple promise-based IndexedDB wrapper.
 // All business data lives on-device only — nothing is sent anywhere.
 const DB_NAME = "crm-db";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_CONTACTS = "contacts";
 const STORE_EVENTS = "events";
+const STORE_INVOICES = "invoices";
+const STORE_SETTINGS = "settings";
 
 let _dbPromise = null;
 
@@ -22,6 +24,14 @@ function openDB() {
         const store = db.createObjectStore(STORE_EVENTS, { keyPath: "id" });
         store.createIndex("when", "when", { unique: false });
         store.createIndex("contactId", "contactId", { unique: false });
+      }
+      if (!db.objectStoreNames.contains(STORE_INVOICES)) {
+        const store = db.createObjectStore(STORE_INVOICES, { keyPath: "id" });
+        store.createIndex("contactId", "contactId", { unique: false });
+        store.createIndex("type", "type", { unique: false });
+      }
+      if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
+        db.createObjectStore(STORE_SETTINGS, { keyPath: "key" });
       }
     };
     req.onsuccess = (e) => resolve(e.target.result);
@@ -114,7 +124,9 @@ const DB = {
   async exportJSON() {
     const contacts = await this.getAll();
     const events = await Events.getAll();
-    return JSON.stringify({ exportedAt: new Date().toISOString(), contacts, events }, null, 2);
+    const invoices = await Invoices.getAll();
+    const settings = await Settings.get();
+    return JSON.stringify({ exportedAt: new Date().toISOString(), contacts, events, invoices, settings }, null, 2);
   },
 };
 
@@ -173,5 +185,96 @@ const Events = {
   async forContact(contactId) {
     const all = await this.getAll();
     return all.filter((e) => e.contactId === contactId);
+  },
+};
+
+// ---------------- Invoices & Proposals ----------------
+const Invoices = {
+  async getAll() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(STORE_INVOICES, "readonly").objectStore(STORE_INVOICES).getAll();
+      req.onsuccess = () => resolve(req.result.sort((a, b) => b.issueDate.localeCompare(a.issueDate)));
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async get(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(STORE_INVOICES, "readonly").objectStore(STORE_INVOICES).get(id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async nextNumber(type) {
+    const key = type === "proposal" ? "proposalCounter" : "invoiceCounter";
+    const settings = await Settings.get();
+    const next = (settings[key] || 0) + 1;
+    await Settings.update({ [key]: next });
+    const prefix = type === "proposal" ? "PRO" : "INV";
+    return `${prefix}-${String(next).padStart(4, "0")}`;
+  },
+
+  async add(invoice) {
+    const now = new Date().toISOString();
+    const number = invoice.number || (await this.nextNumber(invoice.type || "invoice"));
+    const record = {
+      id: uid("i"),
+      type: "invoice", // invoice | proposal
+      number,
+      contactId: null,
+      issueDate: now.slice(0, 10),
+      dueDate: "",
+      currency: "USD",
+      items: [], // {id, description, qty, unitPrice}
+      notes: "",
+      status: "draft", // draft | sent | paid (invoice) / draft | sent | accepted (proposal)
+      createdAt: now,
+      updatedAt: now,
+      ...invoice,
+      number,
+    };
+    await withStore(STORE_INVOICES, "readwrite", (store) => store.put(record));
+    return record;
+  },
+
+  async update(id, patch) {
+    const existing = await this.get(id);
+    if (!existing) throw new Error("Invoice not found");
+    const updated = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    await withStore(STORE_INVOICES, "readwrite", (store) => store.put(updated));
+    return updated;
+  },
+
+  async remove(id) {
+    await withStore(STORE_INVOICES, "readwrite", (store) => store.delete(id));
+  },
+
+  total(invoice) {
+    return (invoice.items || []).reduce((sum, it) => sum + (Number(it.qty) || 0) * (Number(it.unitPrice) || 0), 0);
+  },
+};
+
+// ---------------- Settings (business profile + counters) ----------------
+const Settings = {
+  async get() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(STORE_SETTINGS, "readonly").objectStore(STORE_SETTINGS).get("business");
+      req.onsuccess = () => resolve(req.result ? req.result.value : {
+        businessName: "", address: "", phone: "", email: "",
+        currency: "USD", logoDataUrl: "", invoiceCounter: 0, proposalCounter: 0,
+      });
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async update(patch) {
+    const current = await this.get();
+    const updated = { ...current, ...patch };
+    await withStore(STORE_SETTINGS, "readwrite", (store) => store.put({ key: "business", value: updated }));
+    return updated;
   },
 };
