@@ -110,6 +110,7 @@ document.querySelectorAll("#schedule-chips .chip").forEach((chip) => {
     Schedule.renderList();
   });
 });
+document.getElementById("btn-route-today").addEventListener("click", () => Schedule.routeToday());
 
 // ---------------- Invoices wiring ----------------
 document.getElementById("btn-inv-cancel").addEventListener("click", closeAllScreens);
@@ -173,13 +174,94 @@ document.getElementById("btn-biz-save").addEventListener("click", async () => {
   showToast("Business profile saved");
 });
 
+// ---------------- PIN lock ----------------
+async function refreshPinStatus() {
+  const locked = await Security.isLocked();
+  document.getElementById("pin-status-text").textContent = locked
+    ? "A PIN is currently set."
+    : "No PIN set — the app opens directly.";
+  document.getElementById("btn-pin-remove").style.display = locked ? "block" : "none";
+}
+
+document.getElementById("btn-pin-save").addEventListener("click", async () => {
+  const a = document.getElementById("pin-new").value;
+  const b = document.getElementById("pin-confirm").value;
+  if (!/^\d{4}$/.test(a)) { showToast("PIN must be exactly 4 digits"); return; }
+  if (a !== b) { showToast("PINs don't match"); return; }
+  await Security.setPin(a);
+  document.getElementById("pin-new").value = "";
+  document.getElementById("pin-confirm").value = "";
+  await refreshPinStatus();
+  showToast("PIN saved");
+});
+
+document.getElementById("btn-pin-remove").addEventListener("click", async () => {
+  if (!confirm("Remove the PIN? The app will open without a lock screen.")) return;
+  await Security.removePin();
+  await refreshPinStatus();
+  showToast("PIN removed");
+});
+
+let lockPin = "";
+function renderLockKeypad() {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"];
+  const wrap = document.getElementById("lock-keypad");
+  wrap.innerHTML = keys.map((k) => {
+    if (k === "") return `<div class="lock-key empty"></div>`;
+    if (k === "back") return `<button type="button" class="lock-key" data-key="back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><path d="M18 9l-6 6M12 9l6 6"/></svg></button>`;
+    return `<button type="button" class="lock-key" data-key="${k}">${k}</button>`;
+  }).join("");
+  wrap.querySelectorAll(".lock-key[data-key]").forEach((btn) => {
+    btn.addEventListener("click", () => handleLockKey(btn.dataset.key));
+  });
+}
+
+function updateLockDots() {
+  document.querySelectorAll("#lock-dots span").forEach((dot, i) => {
+    dot.classList.toggle("filled", i < lockPin.length);
+  });
+}
+
+async function handleLockKey(key) {
+  if (key === "back") {
+    lockPin = lockPin.slice(0, -1);
+    updateLockDots();
+    return;
+  }
+  if (lockPin.length >= 4) return;
+  lockPin += key;
+  updateLockDots();
+  if (lockPin.length === 4) {
+    const ok = await Security.verify(lockPin);
+    if (ok) {
+      document.getElementById("lock-screen").hidden = true;
+      lockPin = "";
+      updateLockDots();
+      document.getElementById("lock-error").textContent = "";
+    } else {
+      document.getElementById("lock-error").textContent = "Incorrect PIN";
+      document.getElementById("lock-dots").classList.add("shake");
+      setTimeout(() => {
+        document.getElementById("lock-dots").classList.remove("shake");
+        lockPin = "";
+        updateLockDots();
+      }, 400);
+    }
+  }
+}
+renderLockKeypad();
+
 // ---------------- Boot ----------------
 (async function boot() {
+  if (await Security.isLocked()) {
+    document.getElementById("lock-screen").hidden = false;
+  }
   await Contacts.refresh();
   await Schedule.refresh();
   Schedule.startReminderLoop();
   await InvoicesUI.refresh();
   await loadBusinessProfileForm();
+  await refreshPinStatus();
 })();
 
 // ---------------- PWA install support ----------------

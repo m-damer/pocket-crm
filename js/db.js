@@ -1,11 +1,12 @@
 // Simple promise-based IndexedDB wrapper.
 // All business data lives on-device only — nothing is sent anywhere.
 const DB_NAME = "crm-db";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_CONTACTS = "contacts";
 const STORE_EVENTS = "events";
 const STORE_INVOICES = "invoices";
 const STORE_SETTINGS = "settings";
+const STORE_DOCS = "documents";
 
 let _dbPromise = null;
 
@@ -33,6 +34,10 @@ function openDB() {
       if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
         db.createObjectStore(STORE_SETTINGS, { keyPath: "key" });
       }
+      if (!db.objectStoreNames.contains(STORE_DOCS)) {
+        const store = db.createObjectStore(STORE_DOCS, { keyPath: "id" });
+        store.createIndex("contactId", "contactId", { unique: false });
+      }
     };
     req.onsuccess = (e) => resolve(e.target.result);
     req.onerror = (e) => reject(e.target.error);
@@ -52,6 +57,15 @@ async function withStore(storeName, mode, fn) {
     const result = fn(store);
     tx.oncomplete = () => resolve(result);
     tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getAllFromStore(storeName) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(storeName, "readonly").objectStore(storeName).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
@@ -126,7 +140,10 @@ const DB = {
     const events = await Events.getAll();
     const invoices = await Invoices.getAll();
     const settings = await Settings.get();
-    return JSON.stringify({ exportedAt: new Date().toISOString(), contacts, events, invoices, settings }, null, 2);
+    // Don't leak the PIN hash/salt into an exported backup file.
+    const { pinHash, pinSalt, ...safeSettings } = settings;
+    const documents = await getAllFromStore(STORE_DOCS);
+    return JSON.stringify({ exportedAt: new Date().toISOString(), contacts, events, invoices, documents, settings: safeSettings }, null, 2);
   },
 };
 
@@ -266,6 +283,7 @@ const Settings = {
       req.onsuccess = () => resolve(req.result ? req.result.value : {
         businessName: "", address: "", phone: "", email: "",
         currency: "USD", logoDataUrl: "", invoiceCounter: 0, proposalCounter: 0,
+        pinHash: "", pinSalt: "",
       });
       req.onerror = () => reject(req.error);
     });
@@ -276,5 +294,60 @@ const Settings = {
     const updated = { ...current, ...patch };
     await withStore(STORE_SETTINGS, "readwrite", (store) => store.put({ key: "business", value: updated }));
     return updated;
+  },
+};
+
+// ---------------- PIN lock ----------------
+async function sha256Hex(text) {
+  const data = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const Security = {
+  async isLocked() {
+    const s = await Settings.get();
+    return !!s.pinHash;
+  },
+
+  async setPin(pin) {
+    const salt = Array.from(crypto.getRandomValues(new Uint8Array(16))).map((b) => b.toString(16).padStart(2, "0")).join("");
+    const pinHash = await sha256Hex(salt + pin);
+    await Settings.update({ pinSalt: salt, pinHash });
+  },
+
+  async removePin() {
+    await Settings.update({ pinSalt: "", pinHash: "" });
+  },
+
+  async verify(pin) {
+    const s = await Settings.get();
+    if (!s.pinHash) return true;
+    const attempt = await sha256Hex((s.pinSalt || "") + pin);
+    return attempt === s.pinHash;
+  },
+};
+
+// ---------------- Documents (per-contact attachments) ----------------
+const Documents = {
+  async forContact(contactId) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const idx = db.transaction(STORE_DOCS, "readonly").objectStore(STORE_DOCS).index("contactId");
+      const req = idx.getAll(contactId);
+      req.onsuccess = () => resolve(req.result.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async add(doc) {
+    const now = new Date().toISOString();
+    const record = { id: uid("d"), contactId: null, name: "", type: "", size: 0, dataUrl: "", createdAt: now, ...doc };
+    await withStore(STORE_DOCS, "readwrite", (store) => store.put(record));
+    return record;
+  },
+
+  async remove(id) {
+    await withStore(STORE_DOCS, "readwrite", (store) => store.delete(id));
   },
 };

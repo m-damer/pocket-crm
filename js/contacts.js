@@ -117,7 +117,7 @@ async function renderDetail() {
     <p>${escapeHTML(c.company || CAT_META[c.category].label)}</p>
   `;
 
-  const hasPhone = !!c.phone, hasEmail = !!c.email;
+  const hasPhone = !!c.phone, hasEmail = !!c.email, hasAddress = !!c.address;
   document.getElementById("detail-qa").innerHTML = `
     <a class="qa-btn ${hasPhone ? "" : "disabled"}" href="${hasPhone ? "tel:" + c.phone : "#"}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
@@ -130,6 +130,10 @@ async function renderDetail() {
     <a class="qa-btn ${hasEmail ? "" : "disabled"}" href="${hasEmail ? "mailto:" + c.email : "#"}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
       Email
+    </a>
+    <a class="qa-btn ${hasAddress ? "" : "disabled"}" target="_blank" rel="noopener" href="${hasAddress ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(c.address) : "#"}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      Directions
     </a>
   `;
 
@@ -174,6 +178,61 @@ async function renderDetail() {
   });
 
   setDetailTab(detailTab);
+  await renderDocsTab(c.id);
+}
+
+async function renderDocsTab(contactId) {
+  const docs = await Documents.forContact(contactId);
+  const wrap = document.getElementById("detail-tab-docs");
+  wrap.innerHTML = `
+    <div class="field-list">
+      <label class="btn-add-item" style="display:block;text-align:center;margin-bottom:10px;cursor:pointer">
+        + Attach a file
+        <input type="file" id="doc-file-input" style="display:none" />
+      </label>
+      ${docs.length === 0
+        ? `<div class="empty-state" style="padding:24px 16px"><p>No documents attached yet.</p></div>`
+        : docs.map((d) => `
+          <div class="doc-row" data-id="${d.id}">
+            <div class="doc-icon">${(d.name.split(".").pop() || "?").slice(0, 4).toUpperCase()}</div>
+            <div class="contact-info">
+              <p class="contact-name">${escapeHTML(d.name)}</p>
+              <p class="contact-sub">${(d.size / 1024).toFixed(0)} KB · ${fmtDate(d.createdAt)}</p>
+            </div>
+            <a class="icon-btn doc-download" style="color:var(--navy)" href="${d.dataUrl}" download="${escapeHTML(d.name)}" title="Download">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            </a>
+            <button class="icon-btn doc-remove" style="color:#B3261E" data-remove="${d.id}" title="Remove">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+          </div>
+        `).join("")}
+    </div>
+  `;
+
+  document.getElementById("doc-file-input").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      showToast("File too large (max 8 MB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      await Documents.add({ contactId, name: file.name, type: file.type, size: file.size, dataUrl: reader.result });
+      showToast("File attached");
+      await renderDocsTab(contactId);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  wrap.querySelectorAll("[data-remove]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Remove this file?")) return;
+      await Documents.remove(btn.dataset.remove);
+      await renderDocsTab(contactId);
+    });
+  });
 }
 
 function setDetailTab(tab) {
@@ -181,7 +240,7 @@ function setDetailTab(tab) {
   document.querySelectorAll("#screen-detail .tab-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.dtab === tab)
   );
-  ["info", "activity", "notes"].forEach((t) => {
+  ["info", "activity", "notes", "docs"].forEach((t) => {
     document.getElementById("detail-tab-" + t).hidden = t !== tab;
   });
 }

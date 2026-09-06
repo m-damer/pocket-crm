@@ -151,6 +151,33 @@ const Schedule = {
     }
     if (due.length) await this.load();
   },
+
+  // ---------------- Route planning ----------------
+  routeToday() {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const endOfToday = startOfToday + 86400000;
+
+    const stops = this.all
+      .filter((e) => e.type === "meeting" && !e.completed)
+      .filter((e) => { const t = new Date(e.when).getTime(); return t >= startOfToday && t < endOfToday; })
+      .sort((a, b) => a.when.localeCompare(b.when))
+      .map((e) => {
+        const c = e.contactId ? Contacts.all.find((c) => c.id === e.contactId) : null;
+        return c && c.address ? c.address : null;
+      })
+      .filter(Boolean);
+
+    if (stops.length === 0) {
+      showToast("No meetings with an address scheduled today");
+      return;
+    }
+    const destination = stops[stops.length - 1];
+    const waypoints = stops.slice(0, -1);
+    let url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+    if (waypoints.length) url += `&waypoints=${waypoints.map(encodeURIComponent).join("|")}`;
+    window.open(url, "_blank", "noopener");
+  },
 };
 
 // ---------------- Add / Edit event form ----------------
