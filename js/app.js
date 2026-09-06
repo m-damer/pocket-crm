@@ -94,6 +94,27 @@ async function exportData() {
 document.getElementById("btn-export").addEventListener("click", exportData);
 document.getElementById("row-export").addEventListener("click", exportData);
 
+document.getElementById("import-backup-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  await importBackupFile(file);
+  e.target.value = "";
+});
+
+document.getElementById("row-export-vcard").addEventListener("click", exportAllVCards);
+
+document.getElementById("import-vcard-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  await importVCardFile(file);
+  e.target.value = "";
+});
+
+document.getElementById("row-import-picker").addEventListener("click", importFromPhoneContacts);
+if (contactPickerSupported()) {
+  document.getElementById("row-import-picker").style.display = "flex";
+}
+
 // ---------------- Schedule wiring ----------------
 document.getElementById("btn-ev-cancel").addEventListener("click", closeAllScreens);
 document.getElementById("btn-ev-cancel-2").addEventListener("click", closeAllScreens);

@@ -143,6 +143,30 @@ const DB = {
     const documents = await getAllFromStore(STORE_DOCS);
     return JSON.stringify({ exportedAt: new Date().toISOString(), contacts, events, invoices, documents, settings }, null, 2);
   },
+
+  async importBackup(data) {
+    const counts = { contacts: 0, events: 0, invoices: 0, documents: 0 };
+    for (const c of data.contacts || []) {
+      await withStore(STORE_CONTACTS, "readwrite", (store) => store.put(c));
+      counts.contacts++;
+    }
+    for (const e of data.events || []) {
+      await withStore(STORE_EVENTS, "readwrite", (store) => store.put(e));
+      counts.events++;
+    }
+    for (const i of data.invoices || []) {
+      await withStore(STORE_INVOICES, "readwrite", (store) => store.put(i));
+      counts.invoices++;
+    }
+    for (const d of data.documents || []) {
+      await withStore(STORE_DOCS, "readwrite", (store) => store.put(d));
+      counts.documents++;
+    }
+    if (data.settings && typeof data.settings === "object") {
+      await Settings.update(data.settings);
+    }
+    return counts;
+  },
 };
 
 // ---------------- Events (Schedule: tasks & meetings) ----------------

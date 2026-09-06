@@ -28,6 +28,14 @@ All planned CRM features are now built. The only thing left on the original road
 
 Fully offline after first load (installable as a real app icon).
 
+## Phone contacts integration
+- **Save a single contact to your phone**: open any contact → "Save to phone" — downloads a `.vcf` file (or opens your share sheet, if available). Opening that file lets your phone's Contacts app import it in one tap.
+- **Export all contacts to your phone at once**: More → "Export all as vCard (.vcf)" — a single file with every contact, importable in bulk by your phone's Contacts app.
+- **Import from your phone**: on Android Chrome, More → "Import from phone contacts" opens your real native contact list to pick from directly — no file needed. On browsers without that picker, the row is hidden and you can instead use "Import from a .vcf file" (works everywhere, and also handles a `.vcf` your phone itself exported).
+- **Full backup restore**: More → "Restore from backup" reads back a JSON file from "Export full backup" — useful when moving to a new phone. Restoring the same backup twice is safe; it won't create duplicates.
+
+A website genuinely can't silently write into your phone's native contacts (that would be a privacy hole any site could exploit) — the `.vcf` file is the standard, safe way every app does this, native or not; it just needs one extra tap to confirm the import on your end.
+
 ## A note on reminders
 Since this is a browser-based app (not yet the native APK), reminders only fire reliably **while the app is open** — a phone browser can't wake itself up in the background the way an installed native app can. If you turn on "Remind me" for an item, the app will ask for notification permission the first time, then try to notify you if you have the app open (or recently open) when the time arrives. The agenda itself will always show anything overdue the moment you open it, regardless of notifications. True background push reminders are one of the things the native APK will unlock.
 

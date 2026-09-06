@@ -94,8 +94,31 @@
       <div class="more-card">
         <div class="more-row" id="row-export">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
-          <div class="txt"><p class="t">Export all contacts</p><p class="s">Download a JSON backup to your device</p></div>
+          <div class="txt"><p class="t">Export full backup (JSON)</p><p class="s">Everything — contacts, schedule, invoices</p></div>
         </div>
+        <label class="more-row" style="cursor:pointer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M5 21h14"/></svg>
+          <div class="txt"><p class="t">Restore from backup</p><p class="s">Import a previously exported JSON file</p></div>
+          <input type="file" id="import-backup-input" accept="application/json" style="display:none" />
+        </label>
+      </div>
+      <p class="section-title">Phone contacts</p>
+      <div class="more-card">
+        <div class="more-row" id="row-export-vcard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg>
+          <div class="txt"><p class="t">Export all as vCard (.vcf)</p><p class="s">Import the file into your phone's Contacts app</p></div>
+        </div>
+        <div class="more-row" id="row-import-picker" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          <div class="txt"><p class="t">Import from phone contacts</p><p class="s">Pick contacts directly from your phone</p></div>
+        </div>
+        <label class="more-row" style="cursor:pointer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M5 21h14"/></svg>
+          <div class="txt"><p class="t">Import from a .vcf file</p><p class="s">For phones without direct contact picker support</p></div>
+          <input type="file" id="import-vcard-input" accept=".vcf,text/vcard" style="display:none" />
+        </label>
+      </div>
+      <div class="more-card">
         <div class="more-row">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
           <div class="txt"><p class="t">Everything stays on this phone</p><p class="s">No account, no server — fully offline</p></div>
@@ -298,6 +321,7 @@
 <script src="js/vendor/jspdf.umd.min.js"></script>
 <script src="js/db.js"></script>
 <script src="js/contacts.js"></script>
+<script src="js/vcard.js"></script>
 <script src="js/schedule.js"></script>
 <script src="js/invoices.js"></script>
 <script src="js/app.js"></script>
