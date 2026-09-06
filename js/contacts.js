@@ -79,6 +79,24 @@ function escapeHTML(s) {
   }[m]));
 }
 
+async function renderLinkedEvents(contactId) {
+  const events = (await Events.forContact(contactId))
+    .filter((e) => !e.completed)
+    .sort((a, b) => a.when.localeCompare(b.when));
+  if (events.length === 0) return "";
+  return `
+    <div class="field-list" style="margin-top:2px">
+      <p class="label" style="margin:6px 6px 6px">Upcoming</p>
+      ${events.map((e) => `
+        <div class="field-row">
+          <p class="value">${escapeHTML(e.title || "Untitled")}</p>
+          <p class="label" style="margin-top:3px">${new Date(e.when).toLocaleDateString(undefined, { day: "numeric", month: "short" })} · ${new Date(e.when).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</p>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
 // ---------------- Detail screen ----------------
 let detailTab = "info";
 
@@ -124,6 +142,7 @@ async function renderDetail() {
       ${c.tags && c.tags.length ? `<div class="field-row"><p class="label">Tags</p><div class="tag-row">${c.tags.map((t) => `<span class="tag">${escapeHTML(t)}</span>`).join("")}</div></div>` : ""}
       <div class="field-row"><p class="label">Added</p><p class="value">${fmtDate(c.createdAt)}</p></div>
     </div>
+    ${await renderLinkedEvents(c.id)}
   `;
 
   const activities = c.activities || [];

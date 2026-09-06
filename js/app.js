@@ -6,6 +6,11 @@ const TAB_VIEWS = {
   more: "view-more",
 };
 
+const FAB_ACTIONS = {
+  contacts: () => openForm(null),
+  schedule: () => openEventForm(null),
+};
+
 function switchTab(tab) {
   Object.entries(TAB_VIEWS).forEach(([key, viewId]) => {
     document.getElementById(viewId).hidden = key !== tab;
@@ -13,7 +18,9 @@ function switchTab(tab) {
   document.querySelectorAll(".nav-item").forEach((b) =>
     b.classList.toggle("active", b.dataset.tab === tab)
   );
-  document.getElementById("fab-add").style.display = tab === "contacts" ? "flex" : "none";
+  const fab = document.getElementById("fab-add");
+  fab.style.display = FAB_ACTIONS[tab] ? "flex" : "none";
+  fab.onclick = FAB_ACTIONS[tab] || null;
 }
 
 document.querySelectorAll(".nav-item").forEach((btn) => {
@@ -39,7 +46,7 @@ function showToast(msg) {
 }
 
 // ---------------- Wiring ----------------
-document.getElementById("fab-add").addEventListener("click", () => openForm(null));
+switchTab("contacts"); // sets the initial FAB action
 document.getElementById("btn-detail-back").addEventListener("click", closeAllScreens);
 document.getElementById("btn-form-cancel").addEventListener("click", closeAllScreens);
 document.getElementById("btn-form-cancel-2").addEventListener("click", closeAllScreens);
@@ -86,9 +93,28 @@ async function exportData() {
 document.getElementById("btn-export").addEventListener("click", exportData);
 document.getElementById("row-export").addEventListener("click", exportData);
 
+// ---------------- Schedule wiring ----------------
+document.getElementById("btn-ev-cancel").addEventListener("click", closeAllScreens);
+document.getElementById("btn-ev-cancel-2").addEventListener("click", closeAllScreens);
+document.getElementById("btn-ev-save").addEventListener("click", saveEventForm);
+document.getElementById("btn-ev-delete").addEventListener("click", deleteCurrentEvent);
+document.querySelectorAll("#ev-type button").forEach((b) => {
+  b.addEventListener("click", () => setEventType(b.dataset.type));
+});
+document.querySelectorAll("#schedule-chips .chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    document.querySelectorAll("#schedule-chips .chip").forEach((c) => c.classList.remove("active"));
+    chip.classList.add("active");
+    Schedule.filter = chip.dataset.sfilter;
+    Schedule.renderList();
+  });
+});
+
 // ---------------- Boot ----------------
 (async function boot() {
   await Contacts.refresh();
+  await Schedule.refresh();
+  Schedule.startReminderLoop();
 })();
 
 // ---------------- PWA install support ----------------

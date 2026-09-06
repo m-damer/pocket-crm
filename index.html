@@ -37,20 +37,20 @@
       </div>
     </div>
     <div class="list" id="contact-list"></div>
-    <button class="fab" id="fab-add" title="Add contact">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-    </button>
   </section>
 
-  <!-- ===== SCHEDULE TAB (placeholder) ===== -->
+  <!-- ===== SCHEDULE TAB ===== -->
   <section class="view" id="view-schedule" hidden>
     <header class="header"><h1>Schedule</h1></header>
-    <div class="placeholder">
-      <div class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></div>
-      <h3>Tasks & meetings, coming next</h3>
-      <p>Reminders and a daily agenda will live here, synced with your contacts.</p>
-      <span class="phase-tag">Phase 2</span>
+    <div class="toolbar">
+      <div class="chips" id="schedule-chips">
+        <button class="chip active" data-sfilter="upcoming">Upcoming</button>
+        <button class="chip" data-sfilter="today">Today</button>
+        <button class="chip" data-sfilter="completed">Completed</button>
+        <button class="chip" data-sfilter="all">All</button>
+      </div>
     </div>
+    <div class="list" id="schedule-list"></div>
   </section>
 
   <!-- ===== INVOICES TAB (placeholder) ===== -->
@@ -81,16 +81,19 @@
       </div>
       <p class="section-title">Coming up</p>
       <div class="more-card">
-        <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><div class="txt"><p class="t">Scheduling & reminders</p><p class="s">Phase 2</p></div></div>
         <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l3 3v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><div class="txt"><p class="t">Invoices & proposals</p><p class="s">Phase 3</p></div></div>
         <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><div class="txt"><p class="t">Maps, route planning, PIN lock</p><p class="s">Phase 4</p></div></div>
       </div>
       <p class="section-title">About</p>
       <div class="more-card">
-        <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/></svg><div class="txt"><p class="t">Cyberomeda CRM</p><p class="s">v0.1 · Phase 1 build</p></div></div>
+        <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/></svg><div class="txt"><p class="t">Cyberomeda CRM</p><p class="s">v0.2 · Phase 2 build</p></div></div>
       </div>
     </div>
   </section>
+
+  <button class="fab" id="fab-add" title="Add">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+  </button>
 
   <nav class="bottom-nav">
     <button class="nav-item active" data-tab="contacts">
@@ -166,11 +169,49 @@
     </div>
   </div>
 
+  <!-- ===== NEW/EDIT SCHEDULE ITEM SCREEN ===== -->
+  <div class="screen" id="screen-event-form">
+    <header class="header">
+      <button class="icon-btn" id="btn-ev-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+      <h1 id="ev-form-title">New task or meeting</h1>
+      <div style="width:36px"></div>
+    </header>
+    <div class="view">
+      <div class="form-group">
+        <label>Type</label>
+        <div class="segmented" id="ev-type">
+          <button type="button" class="sel-task active" data-type="task">Task</button>
+          <button type="button" class="sel-meeting" data-type="meeting">Meeting</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Title</label><input type="text" id="ev-title" placeholder="e.g. Call about proposal" /></div>
+      <div class="form-row-2">
+        <div class="form-group"><label>Date</label><input type="date" id="ev-date" /></div>
+        <div class="form-group"><label>Time</label><input type="time" id="ev-time" /></div>
+      </div>
+      <div class="form-group"><label>Link to contact</label>
+        <select id="ev-contact"></select>
+      </div>
+      <div class="form-group checkbox-row">
+        <label class="checkbox-label"><input type="checkbox" id="ev-remind" /> Remind me (while the app is open)</label>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea id="ev-notes"></textarea></div>
+      <div class="form-actions">
+        <button class="btn-secondary" id="btn-ev-cancel-2">Cancel</button>
+        <button class="btn-primary" id="btn-ev-save">Save</button>
+      </div>
+      <div class="danger-zone" id="ev-delete" style="display:none">
+        <button class="btn-danger" id="btn-ev-delete">Delete item</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 </div>
 
 <script src="js/db.js"></script>
 <script src="js/contacts.js"></script>
+<script src="js/schedule.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
