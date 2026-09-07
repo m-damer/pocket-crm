@@ -2,6 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<script>
+// Applies the last-known language instantly, before CSS/JS finish loading,
+// so a returning Arabic user doesn't see a flash of the English/LTR layout
+// while IndexedDB (the real source of truth, read in js/i18n.js) opens
+// asynchronously. Nothing here is user data — just a tiny paint-time cache
+// of the same preference already stored in the on-device database.
+(function () {
+  try {
+    if (localStorage.getItem("crm-lang") === "ar") {
+      document.documentElement.lang = "ar";
+      document.documentElement.dir = "rtl";
+    }
+  } catch (e) { /* localStorage unavailable — falls back to English until DB loads */ }
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
 <title>Cyberomeda CRM</title>
 <meta name="theme-color" content="#1F3D71" />
@@ -19,27 +34,27 @@
   <!-- ===== CONTACTS TAB ===== -->
   <section class="view" id="view-contacts">
     <header class="header">
-      <h1 id="contacts-header-title">Contacts</h1>
-      <button class="icon-btn" id="btn-select-share" title="Share selected" hidden>
+      <h1 id="contacts-header-title" data-i18n="contacts_title">Contacts</h1>
+      <button class="icon-btn" id="btn-select-share" title="Share selected" data-i18n-title="btn_share_selected_title" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
       </button>
-      <button class="icon-btn" id="btn-select-mode" title="Select contacts">
+      <button class="icon-btn" id="btn-select-mode" title="Select contacts" data-i18n-title="btn_select_title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/></svg>
       </button>
-      <button class="icon-btn" id="btn-export" title="Export data">
+      <button class="icon-btn" id="btn-export" title="Export data" data-i18n-title="btn_export_title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
       </button>
     </header>
     <div class="toolbar">
       <div class="search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
-        <input type="text" id="search-input" placeholder="Search name, company, phone..." />
+        <input type="text" id="search-input" placeholder="Search name, company, phone..." data-i18n-ph="search_placeholder" />
       </div>
       <div class="chips" id="filter-chips">
-        <button class="chip active" data-filter="all">All</button>
-        <button class="chip" data-filter="customer">Customers</button>
-        <button class="chip" data-filter="lead">Leads</button>
-        <button class="chip" data-filter="lost">Lost</button>
+        <button class="chip active" data-filter="all" data-i18n="filter_all">All</button>
+        <button class="chip" data-filter="customer" data-i18n="filter_customers">Customers</button>
+        <button class="chip" data-filter="lead" data-i18n="filter_leads">Leads</button>
+        <button class="chip" data-filter="lost" data-i18n="filter_lost">Lost</button>
       </div>
     </div>
     <div class="list" id="contact-list"></div>
@@ -48,17 +63,17 @@
   <!-- ===== SCHEDULE TAB ===== -->
   <section class="view" id="view-schedule" hidden>
     <header class="header">
-      <h1>Schedule</h1>
-      <button class="icon-btn" id="btn-route-today" title="Route today's meetings">
+      <h1 data-i18n="schedule_title">Schedule</h1>
+      <button class="icon-btn" id="btn-route-today" title="Route today's meetings" data-i18n-title="btn_route_today_title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
       </button>
     </header>
     <div class="toolbar">
       <div class="chips" id="schedule-chips">
-        <button class="chip active" data-sfilter="upcoming">Upcoming</button>
-        <button class="chip" data-sfilter="today">Today</button>
-        <button class="chip" data-sfilter="completed">Completed</button>
-        <button class="chip" data-sfilter="all">All</button>
+        <button class="chip active" data-sfilter="upcoming" data-i18n="sfilter_upcoming">Upcoming</button>
+        <button class="chip" data-sfilter="today" data-i18n="sfilter_today">Today</button>
+        <button class="chip" data-sfilter="completed" data-i18n="sfilter_completed">Completed</button>
+        <button class="chip" data-sfilter="all" data-i18n="sfilter_all">All</button>
       </div>
     </div>
     <div class="list" id="schedule-list"></div>
@@ -66,113 +81,126 @@
 
   <!-- ===== MORE TAB ===== -->
   <section class="view" id="view-more" hidden>
-    <header class="header"><h1>More</h1></header>
+    <header class="header"><h1 data-i18n="more_title">More</h1></header>
     <div class="more-section">
-      <p class="section-title">Contact form</p>
+      <p class="section-title" data-i18n="section_language">Language</p>
+      <div class="more-card" style="padding:10px 12px">
+        <div class="segmented" id="lang-toggle" style="width:100%">
+          <button type="button" class="sel-lang-en active" data-lang="en" data-i18n="lang_english">English</button>
+          <button type="button" class="sel-lang-ar" data-lang="ar" data-i18n="lang_arabic">العربية</button>
+        </div>
+      </div>
+      <p class="section-title" data-i18n="section_contact_form">Contact form</p>
       <div class="more-card">
         <div class="more-row" id="row-field-settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
-          <div class="txt"><p class="t">Contact form fields</p><p class="s">Choose which fields show, and their order</p></div>
+          <div class="txt"><p class="t" data-i18n="row_field_settings_t">Contact form fields</p><p class="s" data-i18n="row_field_settings_s">Choose which fields show, and their order</p></div>
         </div>
         <div class="more-row" id="row-tags-settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L11 22.99a2 2 0 01-2.83 0L1 15.83a2 2 0 010-2.83L10.59 3.41A2 2 0 0112 3H21a1 1 0 011 1v9a2 2 0 01-.59 1.41z"/><circle cx="16.5" cy="8.5" r="1.5"/></svg>
-          <div class="txt"><p class="t">Manage tags</p><p class="s">Add, rename, recolor or delete tags</p></div>
+          <div class="txt"><p class="t" data-i18n="row_tags_settings_t">Manage tags</p><p class="s" data-i18n="row_tags_settings_s">Add, rename, recolor or delete tags</p></div>
         </div>
       </div>
-      <p class="section-title">Sharing</p>
+      <p class="section-title" data-i18n="section_sharing">Sharing</p>
       <div class="more-card">
         <div class="more-row" id="row-qr-codes">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M15 15h2v2h-2zM19 15h1v1h-1zM15 19h1v1h-1zM19 19h1v1h-1z"/></svg>
-          <div class="txt"><p class="t">QR codes</p><p class="s">Generate a scannable contact card</p></div>
+          <div class="txt"><p class="t" data-i18n="row_qr_codes_t">QR codes</p><p class="s" data-i18n="row_qr_codes_s">Generate a scannable contact card</p></div>
         </div>
       </div>
-      <p class="section-title">Your data</p>
+      <p class="section-title" data-i18n="section_reports">Reports</p>
+      <div class="more-card">
+        <div class="more-row" id="row-reports">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 3 5-8"/></svg>
+          <div class="txt"><p class="t" data-i18n="row_reports_t">Client reports</p><p class="s" data-i18n="row_reports_s">Summaries, activity, and exports</p></div>
+        </div>
+      </div>
+      <p class="section-title" data-i18n="section_your_data">Your data</p>
       <div class="more-card">
         <div class="more-row" id="row-export">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
-          <div class="txt"><p class="t">Export full backup (JSON)</p><p class="s">Everything — contacts, schedule, documents</p></div>
+          <div class="txt"><p class="t" data-i18n="row_export_t">Export full backup (JSON)</p><p class="s" data-i18n="row_export_s">Everything — contacts, schedule, documents</p></div>
         </div>
         <label class="more-row" style="cursor:pointer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M5 21h14"/></svg>
-          <div class="txt"><p class="t">Restore from backup</p><p class="s">Import a previously exported JSON file</p></div>
+          <div class="txt"><p class="t" data-i18n="row_import_backup_t">Restore from backup</p><p class="s" data-i18n="row_import_backup_s">Import a previously exported JSON file</p></div>
           <input type="file" id="import-backup-input" accept="application/json" style="display:none" />
         </label>
       </div>
-      <p class="section-title">Phone contacts</p>
+      <p class="section-title" data-i18n="section_phone_contacts">Phone contacts</p>
       <div class="more-card">
         <div class="more-row" id="row-export-vcard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg>
-          <div class="txt"><p class="t">Export all as vCard (.vcf)</p><p class="s">Import the file into your phone's Contacts app</p></div>
+          <div class="txt"><p class="t" data-i18n="row_export_vcard_t">Export all as vCard (.vcf)</p><p class="s" data-i18n="row_export_vcard_s">Import the file into your phone's Contacts app</p></div>
         </div>
         <div class="more-row" id="row-import-picker" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
-          <div class="txt"><p class="t">Import from phone contacts</p><p class="s">Pick contacts directly from your phone</p></div>
+          <div class="txt"><p class="t" data-i18n="row_import_picker_t">Import from phone contacts</p><p class="s" data-i18n="row_import_picker_s">Pick contacts directly from your phone</p></div>
         </div>
         <label class="more-row" style="cursor:pointer">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M5 21h14"/></svg>
-          <div class="txt"><p class="t">Import from a .vcf file</p><p class="s">For phones without direct contact picker support</p></div>
+          <div class="txt"><p class="t" data-i18n="row_import_vcf_t">Import from a .vcf file</p><p class="s" data-i18n="row_import_vcf_s">For phones without direct contact picker support</p></div>
           <input type="file" id="import-vcard-input" accept=".vcf,text/vcard" style="display:none" />
         </label>
       </div>
       <div class="more-card">
         <div class="more-row">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
-          <div class="txt"><p class="t">Everything stays on this phone</p><p class="s">No account, no server — fully offline</p></div>
+          <div class="txt"><p class="t" data-i18n="row_offline_t">Everything stays on this phone</p><p class="s" data-i18n="row_offline_s">No account, no server — fully offline</p></div>
         </div>
       </div>
-      <p class="section-title">Coming up</p>
+      <p class="section-title" data-i18n="section_coming_up">Coming up</p>
       <div class="more-card">
-        <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg><div class="txt"><p class="t">Arabic language (RTL) & reports</p><p class="s">Next</p></div></div>
-        <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><div class="txt"><p class="t">Native Android app (.apk)</p><p class="s">Final phase</p></div></div>
+        <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><div class="txt"><p class="t" data-i18n="row_native_app_t">Native Android app (.apk)</p><p class="s" data-i18n="row_native_app_s">Final phase</p></div></div>
       </div>
-      <p class="section-title">About</p>
+      <p class="section-title" data-i18n="section_about">About</p>
       <div class="more-card">
-        <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/></svg><div class="txt"><p class="t">Cyberomeda CRM</p><p class="s">v0.7 · Phase 7 build</p></div></div>
+        <div class="more-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-5M12 8h.01"/></svg><div class="txt"><p class="t" data-i18n="app_name">Cyberomeda CRM</p><p class="s" data-i18n="app_version">v0.8 · Phase 8 build</p></div></div>
       </div>
     </div>
   </section>
 
-  <button class="fab" id="fab-add" title="Add">
+  <button class="fab" id="fab-add" title="Add" data-i18n-title="btn_add">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
   </button>
 
   <nav class="bottom-nav">
     <button class="nav-item active" data-tab="contacts">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-      Contacts
+      <span data-i18n="nav_contacts">Contacts</span>
     </button>
     <button class="nav-item" data-tab="schedule">
       <span class="dot"></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
-      Schedule
+      <span data-i18n="nav_schedule">Schedule</span>
     </button>
     <button class="nav-item" data-tab="more">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-      More
+      <span data-i18n="nav_more">More</span>
     </button>
   </nav>
 
   <!-- ===== CONTACT DETAIL SCREEN ===== -->
   <div class="screen" id="screen-detail">
     <header class="header">
-      <button class="icon-btn" id="btn-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <h1>Contact</h1>
+      <button class="icon-btn icon-back" id="btn-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 data-i18n="detail_title">Contact</h1>
       <button class="icon-btn" id="btn-detail-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
     </header>
     <div class="view">
       <div class="detail-hero" id="detail-hero"></div>
       <div class="quick-actions" id="detail-qa"></div>
       <div class="tabs">
-        <button class="tab-btn active" data-dtab="info">Info</button>
-        <button class="tab-btn" data-dtab="activity">Activity</button>
-        <button class="tab-btn" data-dtab="notes">Notes</button>
-        <button class="tab-btn" data-dtab="docs">Docs</button>
+        <button class="tab-btn active" data-dtab="info" data-i18n="tab_info">Info</button>
+        <button class="tab-btn" data-dtab="activity" data-i18n="tab_activity">Activity</button>
+        <button class="tab-btn" data-dtab="notes" data-i18n="tab_notes">Notes</button>
+        <button class="tab-btn" data-dtab="docs" data-i18n="tab_docs">Docs</button>
       </div>
       <div id="detail-tab-info"></div>
       <div id="detail-tab-activity" hidden></div>
       <div id="detail-tab-notes" hidden></div>
       <div id="detail-tab-docs" hidden></div>
-      <div class="danger-zone"><button class="btn-danger" id="btn-delete-contact">Delete contact</button></div>
+      <div class="danger-zone"><button class="btn-danger" id="btn-delete-contact" data-i18n="btn_delete_contact">Delete contact</button></div>
     </div>
   </div>
 
@@ -180,7 +208,7 @@
   <div class="screen" id="screen-form">
     <header class="header">
       <button class="icon-btn" id="btn-form-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
-      <h1 id="form-title">New contact</h1>
+      <h1 id="form-title" data-i18n="form_title_new">New contact</h1>
       <div style="width:36px"></div>
     </header>
     <div class="view">
@@ -188,55 +216,55 @@
         <div class="photo-preview" id="photo-preview"></div>
         <div class="photo-picker-actions">
           <label class="btn-secondary" style="cursor:pointer;padding:9px 16px">
-            Choose photo
+            <span data-i18n="btn_choose_photo">Choose photo</span>
             <input type="file" id="photo-input" accept="image/*" style="display:none" />
           </label>
-          <button type="button" class="btn-secondary" id="btn-remove-photo" style="padding:9px 16px">Remove</button>
+          <button type="button" class="btn-secondary" id="btn-remove-photo" style="padding:9px 16px" data-i18n="btn_remove_photo">Remove</button>
         </div>
       </div>
 
       <div class="form-group">
-        <label>Category</label>
+        <label data-i18n="label_category">Category</label>
         <div class="segmented" id="form-category">
-          <button type="button" class="sel-customer active" data-cat="customer">Customer</button>
-          <button type="button" class="sel-lead" data-cat="lead">Lead</button>
-          <button type="button" class="sel-lost" data-cat="lost">Lost</button>
+          <button type="button" class="sel-customer active" data-cat="customer" data-i18n="cat_customer">Customer</button>
+          <button type="button" class="sel-lead" data-cat="lead" data-i18n="cat_lead">Lead</button>
+          <button type="button" class="sel-lost" data-cat="lost" data-i18n="cat_lost">Lost</button>
         </div>
       </div>
-      <div class="form-group"><label>First name</label><input type="text" id="f-first" /></div>
-      <div class="form-group"><label>Last name</label><input type="text" id="f-last" /></div>
+      <div class="form-group"><label data-i18n="label_first_name">First name</label><input type="text" id="f-first" /></div>
+      <div class="form-group"><label data-i18n="label_last_name">Last name</label><input type="text" id="f-last" /></div>
 
       <div id="dynamic-field-groups">
-        <div class="form-group" data-field="nickname"><label>Nickname</label><input type="text" id="f-nickname" /></div>
+        <div class="form-group" data-field="nickname"><label data-i18n="field_nickname">Nickname</label><input type="text" id="f-nickname" /></div>
         <div data-field="companyJobTitle">
-          <div class="form-group"><label>Job title</label><input type="text" id="f-jobtitle" /></div>
-          <div class="form-group"><label>Company</label><input type="text" id="f-company" /></div>
+          <div class="form-group"><label data-i18n="field_job_title">Job title</label><input type="text" id="f-jobtitle" /></div>
+          <div class="form-group"><label data-i18n="field_company">Company</label><input type="text" id="f-company" /></div>
         </div>
-        <div class="form-group" data-field="phones"><label>Phone numbers</label><div id="f-phones"></div></div>
-        <div class="form-group" data-field="emails"><label>Emails</label><div id="f-emails"></div></div>
-        <div class="form-group" data-field="addresses"><label>Addresses</label><div id="f-addresses"></div></div>
-        <div class="form-group" data-field="websites"><label>Websites</label><div id="f-websites"></div></div>
-        <div class="form-group" data-field="birthday"><label>Birthday</label><input type="date" id="f-birthday" /></div>
-        <div class="form-group" data-field="customFields"><label>Custom fields</label><div id="f-customfields"></div></div>
+        <div class="form-group" data-field="phones"><label data-i18n="field_phones">Phone numbers</label><div id="f-phones"></div></div>
+        <div class="form-group" data-field="emails"><label data-i18n="field_emails">Emails</label><div id="f-emails"></div></div>
+        <div class="form-group" data-field="addresses"><label data-i18n="field_addresses">Addresses</label><div id="f-addresses"></div></div>
+        <div class="form-group" data-field="websites"><label data-i18n="field_websites">Websites</label><div id="f-websites"></div></div>
+        <div class="form-group" data-field="birthday"><label data-i18n="field_birthday">Birthday</label><input type="date" id="f-birthday" /></div>
+        <div class="form-group" data-field="customFields"><label data-i18n="field_custom_fields">Custom fields</label><div id="f-customfields"></div></div>
       </div>
 
       <div class="form-group">
-        <label>Tags</label>
+        <label data-i18n="label_tags">Tags</label>
         <div class="tag-chip-row" id="f-tags-chips"></div>
-        <button type="button" class="btn-secondary" id="btn-toggle-tag-dropdown" style="padding:9px 16px">+ Add tag</button>
+        <button type="button" class="btn-secondary" id="btn-toggle-tag-dropdown" style="padding:9px 16px" data-i18n="btn_add_tag">+ Add tag</button>
         <div class="tag-dropdown" id="tag-dropdown" hidden>
           <div class="tag-dropdown-list" id="tag-dropdown-list"></div>
           <div class="tag-dropdown-new">
-            <input type="text" id="new-tag-name" placeholder="New tag name" />
+            <input type="text" id="new-tag-name" placeholder="New tag name" data-i18n-ph="ph_new_tag_name" />
             <div class="tag-color-swatches" id="new-tag-colors"></div>
-            <button type="button" class="btn-secondary" id="btn-add-new-tag" style="padding:7px 14px;align-self:flex-start">+ Add</button>
+            <button type="button" class="btn-secondary" id="btn-add-new-tag" style="padding:7px 14px;align-self:flex-start" data-i18n="btn_add">+ Add</button>
           </div>
         </div>
       </div>
-      <p class="hint-text" style="margin:14px 4px 4px">Notes and call notes can be added once the contact is saved, from its Notes tab.</p>
+      <p class="hint-text" style="margin:14px 4px 4px" data-i18n="hint_notes_after_save">Notes and call notes can be added once the contact is saved, from its Notes tab.</p>
       <div class="form-actions">
-        <button class="btn-secondary" id="btn-form-cancel-2">Cancel</button>
-        <button class="btn-primary" id="btn-form-save">Save contact</button>
+        <button class="btn-secondary" id="btn-form-cancel-2" data-i18n="btn_cancel">Cancel</button>
+        <button class="btn-primary" id="btn-form-save" data-i18n="btn_save_contact">Save contact</button>
       </div>
     </div>
   </div>
@@ -245,14 +273,14 @@
   <div class="screen" id="screen-photo-crop">
     <header class="header">
       <button class="icon-btn" id="btn-crop-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
-      <h1>Adjust photo</h1>
+      <h1 data-i18n="photo_crop_title">Adjust photo</h1>
       <button class="icon-btn" id="btn-crop-save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></button>
     </header>
     <div class="view" style="display:flex;flex-direction:column;align-items:center;padding-top:28px">
       <div class="crop-viewport" id="crop-viewport">
         <img id="crop-img" draggable="false" />
       </div>
-      <p class="hint-text" style="text-align:center;margin:16px 24px 4px">Drag to reposition, use the slider to zoom</p>
+      <p class="hint-text" style="text-align:center;margin:16px 24px 4px" data-i18n="hint_crop">Drag to reposition, use the slider to zoom</p>
       <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1" style="width:80%;margin-top:14px" />
     </div>
   </div>
@@ -260,12 +288,12 @@
   <!-- ===== CONTACT FORM FIELD SETTINGS SCREEN ===== -->
   <div class="screen" id="screen-field-settings">
     <header class="header">
-      <button class="icon-btn" id="btn-field-settings-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <h1>Contact form fields</h1>
+      <button class="icon-btn icon-back" id="btn-field-settings-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 data-i18n="field_settings_title">Contact form fields</h1>
       <div style="width:36px"></div>
     </header>
     <div class="view">
-      <p class="hint-text" style="margin:14px 16px">Choose which fields appear in the contact form, and in what order. Name and category always show.</p>
+      <p class="hint-text" style="margin:14px 16px" data-i18n="hint_field_settings">Choose which fields appear in the contact form, and in what order. Name and category always show.</p>
       <div id="field-settings-list" style="padding:4px 12px"></div>
     </div>
   </div>
@@ -273,12 +301,12 @@
   <!-- ===== TAGS MANAGEMENT SCREEN ===== -->
   <div class="screen" id="screen-tags">
     <header class="header">
-      <button class="icon-btn" id="btn-tags-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <h1>Tags</h1>
-      <button class="icon-btn" id="btn-tags-add" title="Add tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+      <button class="icon-btn icon-back" id="btn-tags-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 data-i18n="tags_title">Tags</h1>
+      <button class="icon-btn" id="btn-tags-add" title="Add tag" data-i18n-title="btn_add_tag_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
     </header>
     <div class="view">
-      <p class="hint-text" style="margin:14px 16px">Tags you create here are available to pick from on any contact.</p>
+      <p class="hint-text" style="margin:14px 16px" data-i18n="hint_tags">Tags you create here are available to pick from on any contact.</p>
       <div id="tags-manage-list" style="padding:4px 12px"></div>
     </div>
   </div>
@@ -287,32 +315,32 @@
   <div class="screen" id="screen-note-form">
     <header class="header">
       <button class="icon-btn" id="btn-note-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
-      <h1 id="note-form-title">New note</h1>
+      <h1 id="note-form-title" data-i18n="note_form_title_new">New note</h1>
       <button class="icon-btn" id="btn-note-save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></button>
     </header>
     <div class="view">
       <div class="form-group">
-        <label>Type</label>
+        <label data-i18n="label_type">Type</label>
         <div class="segmented" id="note-type-toggle">
-          <button type="button" class="sel-note active" data-note-kind="note">Note</button>
-          <button type="button" class="sel-call" data-note-kind="call">Call note</button>
+          <button type="button" class="sel-note active" data-note-kind="note" data-i18n="note_type_note">Note</button>
+          <button type="button" class="sel-call" data-note-kind="call" data-i18n="note_type_call">Call note</button>
         </div>
       </div>
       <div class="form-group" id="note-call-media-group" hidden>
-        <label>Call note type</label>
+        <label data-i18n="label_call_note_type">Call note type</label>
         <div class="segmented" id="note-call-media-toggle">
-          <button type="button" class="sel-text active" data-call-media="text">Text</button>
-          <button type="button" class="sel-voice" data-call-media="voice">Voice</button>
+          <button type="button" class="sel-text active" data-call-media="text" data-i18n="call_media_text">Text</button>
+          <button type="button" class="sel-voice" data-call-media="voice" data-i18n="call_media_voice">Voice</button>
         </div>
       </div>
-      <div class="form-group"><label>Title (optional)</label><input type="text" id="note-title" placeholder="e.g. Follow-up ideas" /></div>
-      <div class="form-group" id="note-text-group"><label>Text</label><textarea id="note-text" placeholder="Write your note..."></textarea></div>
+      <div class="form-group"><label data-i18n="label_title_optional">Title (optional)</label><input type="text" id="note-title" placeholder="e.g. Follow-up ideas" data-i18n-ph="ph_note_title" /></div>
+      <div class="form-group" id="note-text-group"><label data-i18n="label_text">Text</label><textarea id="note-text" placeholder="Write your note..." data-i18n-ph="ph_note_text"></textarea></div>
       <div class="form-group" id="note-voice-group" hidden>
-        <label>Voice recording</label>
+        <label data-i18n="label_voice_recording">Voice recording</label>
         <div id="note-voice-widget"></div>
       </div>
       <div class="danger-zone" id="note-delete-zone" style="display:none">
-        <button class="btn-danger" id="btn-note-delete">Delete note</button>
+        <button class="btn-danger" id="btn-note-delete" data-i18n="btn_delete_note">Delete note</button>
       </div>
     </div>
   </div>
@@ -320,9 +348,9 @@
   <!-- ===== QR: saved codes list ===== -->
   <div class="screen" id="screen-qr-list">
     <header class="header">
-      <button class="icon-btn" id="btn-qr-list-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <h1>QR codes</h1>
-      <button class="icon-btn" id="btn-qr-generate" title="Generate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+      <button class="icon-btn icon-back" id="btn-qr-list-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 data-i18n="qr_codes_title">QR codes</h1>
+      <button class="icon-btn" id="btn-qr-generate" title="Generate" data-i18n-title="btn_generate_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
     </header>
     <div class="view">
       <div id="qr-list" style="padding:4px 12px"></div>
@@ -333,23 +361,23 @@
   <div class="screen" id="screen-qr-source">
     <header class="header">
       <button class="icon-btn" id="btn-qr-source-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
-      <h1>Generate QR</h1>
+      <h1 data-i18n="generate_qr_title">Generate QR</h1>
       <div style="width:36px"></div>
     </header>
     <div class="view">
-      <p class="hint-text" style="margin:14px 16px">Choose where to get the contact info from.</p>
+      <p class="hint-text" style="margin:14px 16px" data-i18n="hint_qr_source">Choose where to get the contact info from.</p>
       <div class="more-card" style="margin:0 16px">
         <div class="more-row" id="row-qr-from-crm">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>
-          <div class="txt"><p class="t">From your contacts</p><p class="s">Pick one or more contacts already in the app</p></div>
+          <div class="txt"><p class="t" data-i18n="row_qr_from_crm_t">From your contacts</p><p class="s" data-i18n="row_qr_from_crm_s">Pick one or more contacts already in the app</p></div>
         </div>
         <div class="more-row" id="row-qr-from-phone" style="display:none">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
-          <div class="txt"><p class="t">From phone contacts</p><p class="s">Pick directly from your phone</p></div>
+          <div class="txt"><p class="t" data-i18n="row_qr_from_phone_t">From phone contacts</p><p class="s" data-i18n="row_qr_from_phone_s">Pick directly from your phone</p></div>
         </div>
         <div class="more-row" id="row-qr-manual">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
-          <div class="txt"><p class="t">Manual entry</p><p class="s">Type in details for someone not in the app</p></div>
+          <div class="txt"><p class="t" data-i18n="row_qr_manual_t">Manual entry</p><p class="s" data-i18n="row_qr_manual_s">Type in details for someone not in the app</p></div>
         </div>
       </div>
     </div>
@@ -359,13 +387,13 @@
   <div class="screen" id="screen-qr-contact-picker">
     <header class="header">
       <button class="icon-btn" id="btn-qr-picker-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
-      <h1>Pick contacts</h1>
+      <h1 data-i18n="pick_contacts_title">Pick contacts</h1>
       <div style="width:36px"></div>
     </header>
     <div class="view">
       <div id="qr-contact-picker-list" style="padding:4px 12px"></div>
       <div class="form-actions">
-        <button class="btn-primary" id="btn-qr-picker-confirm" style="width:100%">Continue</button>
+        <button class="btn-primary" id="btn-qr-picker-confirm" style="width:100%" data-i18n="btn_continue">Continue</button>
       </div>
     </div>
   </div>
@@ -374,17 +402,17 @@
   <div class="screen" id="screen-qr-manual">
     <header class="header">
       <button class="icon-btn" id="btn-qr-manual-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
-      <h1>Manual entry</h1>
+      <h1 data-i18n="manual_entry_title">Manual entry</h1>
       <div style="width:36px"></div>
     </header>
     <div class="view">
-      <div class="form-group"><label>First name</label><input type="text" id="qr-manual-first" /></div>
-      <div class="form-group"><label>Last name</label><input type="text" id="qr-manual-last" /></div>
-      <div class="form-group"><label>Company</label><input type="text" id="qr-manual-company" /></div>
-      <div class="form-group"><label>Phone</label><input type="tel" id="qr-manual-phone" /></div>
-      <div class="form-group"><label>Email</label><input type="email" id="qr-manual-email" /></div>
+      <div class="form-group"><label data-i18n="label_first_name">First name</label><input type="text" id="qr-manual-first" /></div>
+      <div class="form-group"><label data-i18n="label_last_name">Last name</label><input type="text" id="qr-manual-last" /></div>
+      <div class="form-group"><label data-i18n="label_company">Company</label><input type="text" id="qr-manual-company" /></div>
+      <div class="form-group"><label data-i18n="label_phone">Phone</label><input type="tel" id="qr-manual-phone" /></div>
+      <div class="form-group"><label data-i18n="label_email">Email</label><input type="email" id="qr-manual-email" /></div>
       <div class="form-actions">
-        <button class="btn-primary" id="btn-qr-manual-continue" style="width:100%">Continue</button>
+        <button class="btn-primary" id="btn-qr-manual-continue" style="width:100%" data-i18n="btn_continue">Continue</button>
       </div>
     </div>
   </div>
@@ -392,9 +420,9 @@
   <!-- ===== QR: view single code ===== -->
   <div class="screen" id="screen-qr-view">
     <header class="header">
-      <button class="icon-btn" id="btn-qr-view-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <h1 id="qr-view-label">QR code</h1>
-      <button class="icon-btn" id="btn-qr-view-delete" style="color:#F3C9C9" title="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
+      <button class="icon-btn icon-back" id="btn-qr-view-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 id="qr-view-label" data-i18n="qr_code_fallback">QR code</h1>
+      <button class="icon-btn" id="btn-qr-view-delete" style="color:#F3C9C9" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
     </header>
     <div class="view">
       <div class="qr-canvas-wrap">
@@ -402,8 +430,8 @@
       </div>
       <p class="hint-text" id="qr-view-date" style="text-align:center;margin-top:10px"></p>
       <div class="form-actions" style="display:flex;gap:10px">
-        <button class="btn-secondary" id="btn-qr-download" style="flex:1">Download</button>
-        <button class="btn-primary" id="btn-qr-share" style="flex:1">Share</button>
+        <button class="btn-secondary" id="btn-qr-download" style="flex:1" data-i18n="btn_download">Download</button>
+        <button class="btn-primary" id="btn-qr-share" style="flex:1" data-i18n="btn_share">Share</button>
       </div>
     </div>
   </div>
@@ -414,18 +442,18 @@
   <div class="screen" id="screen-field-picker">
     <header class="header">
       <button class="icon-btn" id="btn-field-picker-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
-      <h1>Choose fields</h1>
+      <h1 data-i18n="choose_fields_title">Choose fields</h1>
       <div style="width:36px"></div>
     </header>
     <div class="view">
-      <p class="hint-text" style="margin:14px 16px">Name is always included. Pick anything else to include.</p>
+      <p class="hint-text" style="margin:14px 16px" data-i18n="hint_field_picker">Name is always included. Pick anything else to include.</p>
       <div style="display:flex;gap:8px;padding:0 16px 10px">
-        <button type="button" class="btn-secondary" id="fp-select-all" style="flex:1;padding:8px">Select all</button>
-        <button type="button" class="btn-secondary" id="fp-select-none" style="flex:1;padding:8px">None</button>
+        <button type="button" class="btn-secondary" id="fp-select-all" style="flex:1;padding:8px" data-i18n="btn_select_all">Select all</button>
+        <button type="button" class="btn-secondary" id="fp-select-none" style="flex:1;padding:8px" data-i18n="btn_select_none">None</button>
       </div>
       <div id="field-picker-list" style="padding:4px 16px"></div>
       <div class="form-actions">
-        <button class="btn-primary" id="btn-field-picker-confirm" style="width:100%">Continue</button>
+        <button class="btn-primary" id="btn-field-picker-confirm" style="width:100%" data-i18n="btn_continue">Continue</button>
       </div>
     </div>
   </div>
@@ -434,35 +462,82 @@
   <div class="screen" id="screen-event-form">
     <header class="header">
       <button class="icon-btn" id="btn-ev-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
-      <h1 id="ev-form-title">New task or meeting</h1>
+      <h1 id="ev-form-title" data-i18n="event_form_title_new">New task or meeting</h1>
       <div style="width:36px"></div>
     </header>
     <div class="view">
       <div class="form-group">
-        <label>Type</label>
+        <label data-i18n="label_type">Type</label>
         <div class="segmented" id="ev-type">
-          <button type="button" class="sel-task active" data-type="task">Task</button>
-          <button type="button" class="sel-meeting" data-type="meeting">Meeting</button>
+          <button type="button" class="sel-task active" data-type="task" data-i18n="event_type_task_seg">Task</button>
+          <button type="button" class="sel-meeting" data-type="meeting" data-i18n="event_type_meeting_seg">Meeting</button>
         </div>
       </div>
-      <div class="form-group"><label>Title</label><input type="text" id="ev-title" placeholder="e.g. Call about proposal" /></div>
+      <div class="form-group"><label data-i18n="label_title">Title</label><input type="text" id="ev-title" placeholder="e.g. Call about proposal" data-i18n-ph="ph_event_title" /></div>
       <div class="form-row-2">
-        <div class="form-group"><label>Date</label><input type="date" id="ev-date" /></div>
-        <div class="form-group"><label>Time</label><input type="time" id="ev-time" /></div>
+        <div class="form-group"><label data-i18n="label_date">Date</label><input type="date" id="ev-date" /></div>
+        <div class="form-group"><label data-i18n="label_time">Time</label><input type="time" id="ev-time" /></div>
       </div>
-      <div class="form-group"><label>Link to contact</label>
+      <div class="form-group"><label data-i18n="label_link_to_contact">Link to contact</label>
         <select id="ev-contact"></select>
       </div>
       <div class="form-group checkbox-row">
-        <label class="checkbox-label"><input type="checkbox" id="ev-remind" /> Remind me (while the app is open)</label>
+        <label class="checkbox-label"><input type="checkbox" id="ev-remind" /> <span data-i18n="label_remind_me">Remind me (while the app is open)</span></label>
       </div>
-      <div class="form-group"><label>Notes</label><textarea id="ev-notes"></textarea></div>
+      <div class="form-group"><label data-i18n="label_notes">Notes</label><textarea id="ev-notes"></textarea></div>
       <div class="form-actions">
-        <button class="btn-secondary" id="btn-ev-cancel-2">Cancel</button>
-        <button class="btn-primary" id="btn-ev-save">Save</button>
+        <button class="btn-secondary" id="btn-ev-cancel-2" data-i18n="btn_cancel">Cancel</button>
+        <button class="btn-primary" id="btn-ev-save" data-i18n="btn_save">Save</button>
       </div>
       <div class="danger-zone" id="ev-delete" style="display:none">
-        <button class="btn-danger" id="btn-ev-delete">Delete item</button>
+        <button class="btn-danger" id="btn-ev-delete" data-i18n="btn_delete_item">Delete item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REPORTS SCREEN ===== -->
+  <div class="screen" id="screen-reports">
+    <header class="header">
+      <button class="icon-btn icon-back" id="btn-reports-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 data-i18n="reports_title">Reports</h1>
+      <div style="width:36px"></div>
+    </header>
+    <div class="view">
+      <div class="tabs">
+        <button class="tab-btn active" data-rtab="summary" data-i18n="tab_summary">Summary</button>
+        <button class="tab-btn" data-rtab="activity" data-i18n="tab_activity_report">Activity</button>
+        <button class="tab-btn" data-rtab="tags" data-i18n="tab_by_tag">By Tag</button>
+      </div>
+
+      <div id="report-tab-summary">
+        <div id="report-summary-content" class="field-list"></div>
+        <div class="form-actions" style="display:flex;gap:10px">
+          <button class="btn-secondary" id="btn-summary-export-csv" style="flex:1" data-i18n="btn_export_csv">Export CSV</button>
+          <button class="btn-primary" id="btn-summary-export-pdf" style="flex:1" data-i18n="btn_export_pdf">Export PDF</button>
+        </div>
+        <p class="hint-text" id="summary-pdf-note" style="margin:8px 16px;display:none"></p>
+      </div>
+
+      <div id="report-tab-activity" hidden>
+        <div class="form-row-2" style="padding:14px 16px 0">
+          <div class="form-group"><label data-i18n="label_from">From</label><input type="date" id="report-from" /></div>
+          <div class="form-group"><label data-i18n="label_to">To</label><input type="date" id="report-to" /></div>
+        </div>
+        <div id="report-activity-content" class="field-list"></div>
+        <div class="form-actions" style="display:flex;gap:10px">
+          <button class="btn-secondary" id="btn-activity-export-csv" style="flex:1" data-i18n="btn_export_csv">Export CSV</button>
+          <button class="btn-primary" id="btn-activity-export-pdf" style="flex:1" data-i18n="btn_export_pdf">Export PDF</button>
+        </div>
+        <p class="hint-text" id="activity-pdf-note" style="margin:8px 16px;display:none"></p>
+      </div>
+
+      <div id="report-tab-tags" hidden>
+        <div id="report-tags-content" class="field-list"></div>
+        <div class="form-actions" style="display:flex;gap:10px">
+          <button class="btn-secondary" id="btn-tags-export-csv" style="flex:1" data-i18n="btn_export_csv">Export CSV</button>
+          <button class="btn-primary" id="btn-tags-export-pdf" style="flex:1" data-i18n="btn_export_pdf">Export PDF</button>
+        </div>
+        <p class="hint-text" id="tags-pdf-note" style="margin:8px 16px;display:none"></p>
       </div>
     </div>
   </div>
@@ -472,12 +547,15 @@
 </div>
 
 <script src="js/vendor/qrcode.js"></script>
+<script src="js/vendor/jspdf.umd.min.js"></script>
 <script src="js/db.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/contacts.js"></script>
 <script src="js/photo-crop.js"></script>
 <script src="js/vcard.js"></script>
 <script src="js/schedule.js"></script>
 <script src="js/qr.js"></script>
+<script src="js/reports.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

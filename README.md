@@ -1,8 +1,23 @@
-# Cyberomeda CRM — Phase 7
+# Cyberomeda CRM — Phase 8
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Phase 7 — QR codes & bulk share (this update)
+## Phase 8b — Client reports (this update)
+- **Reports** (More → Reports): three views — **Summary**, **Activity**, and **By Tag**
+- **Summary**: total contact count, a breakdown by category (Customer / Lead / Lost), and a count per tag
+- **Activity**: pick a date range and see how many contacts were added and how many activity-log entries (notes, calls, category changes) happened in that window, with the full list below
+- **By Tag**: every tag with its contact count and the full list of who's tagged with it
+- **Export**: every report exports as **CSV** (opens in Excel/Sheets, full Arabic support) or **PDF** (formatted document, English text only — see the note below)
+- A note on PDF: the PDF engine this app uses doesn't support Arabic text yet, so names, tags, or notes written in Arabic won't render correctly inside a PDF. This shows up as a small notice next to every PDF button. **CSV/Excel export has no such limitation** — Arabic text comes through perfectly — so it's the safer choice whenever your data includes Arabic.
+
+## Phase 8a — Arabic language & RTL
+- **Full Arabic translation** of every screen, button, label, empty state, confirmation, and toast — nothing was left in English behind the scenes
+- **Language switch** (More → Language): a simple English / العربية toggle, saved on-device so it's remembered next time you open the app
+- **Right-to-left layout**: switching to Arabic mirrors the whole interface — screens slide in from the correct side, the "+" button and back arrows move to the right place, tab order and text alignment all flip naturally
+- **Arabic dates**: months and weekdays show in Arabic once you switch, while numbers stay in familiar Western digits (1, 2, 3) for clarity in a business context
+- Activity log entries (like "Contact added") are written in whichever language was active **at that moment** — same idea as a timestamp, so older entries don't silently change wording after you switch languages
+
+## Phase 7 — QR codes & bulk share
 - **QR codes** (More tab): generate a scannable contact card from a CRM contact, a phone contact, or a manual entry — scanning it offers to add the contact directly, no app needed on the other end
 - Generate **multiple QR codes at once** by picking several contacts together
 - Choose exactly **which fields go into the code** (phone, email, address, company, etc.) with a simple checklist — a saved list of every code you've generated, each viewable full-size, downloadable as an image, or shareable
@@ -39,7 +54,7 @@ A CRM app you install on your phone like a normal app, with **no Play Store, no 
 - Phone contacts integration: save to phone, export/import vCard, native Android contact picker, full JSON backup & restore
 
 ## What's next
-Arabic (RTL) support & reports → then the native Android `.apk`.
+The native Android `.apk`, via Capacitor — the final phase.
 
 Fully offline after first load (installable as a real app icon).
 
