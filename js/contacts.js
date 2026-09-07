@@ -58,6 +58,8 @@ const Contacts = {
   filter: "all",
   query: "",
   currentId: null,
+  selectMode: false,
+  selectedIds: new Set(),
 
   async load() {
     this.all = await DB.getAll();
@@ -91,7 +93,8 @@ const Contacts = {
       return;
     }
     listEl.innerHTML = items.map((c) => `
-      <div class="contact-row" data-id="${c.id}">
+      <div class="contact-row ${this.selectMode ? "select-mode" : ""}" data-id="${c.id}">
+        ${this.selectMode ? `<span class="select-check ${this.selectedIds.has(c.id) ? "checked" : ""}"></span>` : ""}
         ${c.photoDataUrl
           ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover" />`
           : `<div class="avatar" style="background:${CAT_META[c.category].color}">${initials(c)}</div>`}
@@ -99,12 +102,36 @@ const Contacts = {
           <p class="contact-name">${escapeHTML(fullName(c))}</p>
           <p class="contact-sub">${escapeHTML(c.company || primaryPhone(c) || primaryEmail(c) || "")}</p>
         </div>
-        <span class="badge ${c.category}">${CAT_META[c.category].label}</span>
+        ${this.selectMode ? "" : `<span class="badge ${c.category}">${CAT_META[c.category].label}</span>`}
       </div>
     `).join("");
     listEl.querySelectorAll(".contact-row").forEach((row) => {
-      row.addEventListener("click", () => openDetail(row.dataset.id));
+      row.addEventListener("click", () => {
+        if (this.selectMode) this.toggleSelect(row.dataset.id);
+        else openDetail(row.dataset.id);
+      });
     });
+  },
+
+  toggleSelect(id) {
+    if (this.selectedIds.has(id)) this.selectedIds.delete(id);
+    else this.selectedIds.add(id);
+    this.renderList();
+    updateSelectBar();
+  },
+
+  enterSelectMode() {
+    this.selectMode = true;
+    this.selectedIds = new Set();
+    this.renderList();
+    updateSelectBar();
+  },
+
+  exitSelectMode() {
+    this.selectMode = false;
+    this.selectedIds = new Set();
+    this.renderList();
+    updateSelectBar();
   },
 
   async refresh() {

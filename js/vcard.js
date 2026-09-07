@@ -3,31 +3,59 @@ function vcardEscape(s) {
   return String(s || "").replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/;/g, "\\;").replace(/\n/g, "\\n");
 }
 
-function contactToVCard(c) {
+// Field keys used by the shared field picker (QR generation + bulk share).
+// Name/nickname are always included, like an identity — everything else is
+// optional and gated behind `includeKeys`. Pass no `includeKeys` (or null)
+// to keep the original full-export behavior.
+const SHARE_FIELD_META = {
+  company: "Company & job title",
+  phones: "Phone numbers",
+  emails: "Emails",
+  addresses: "Addresses",
+  websites: "Websites",
+  birthday: "Birthday",
+  notes: "Notes",
+};
+const SHARE_FIELD_ALL_KEYS = Object.keys(SHARE_FIELD_META);
+
+function contactToVCard(c, includeKeys) {
+  const include = (key) => !includeKeys || includeKeys.includes(key);
   const lines = ["BEGIN:VCARD", "VERSION:3.0"];
   lines.push(`N:${vcardEscape(c.lastName)};${vcardEscape(c.firstName)};;;`);
   lines.push(`FN:${vcardEscape(fullName(c))}`);
   if (c.nickname) lines.push(`NICKNAME:${vcardEscape(c.nickname)}`);
-  if (c.jobTitle) lines.push(`TITLE:${vcardEscape(c.jobTitle)}`);
-  if (c.company) lines.push(`ORG:${vcardEscape(c.company)}`);
-  (c.phones || []).forEach((p) => {
-    const type = p.label === "mobile" ? "CELL" : (p.label || "OTHER").toUpperCase();
-    lines.push(`TEL;TYPE=${type}:${vcardEscape(p.value)}`);
-  });
-  (c.emails || []).forEach((e) => {
-    lines.push(`EMAIL;TYPE=${(e.label || "OTHER").toUpperCase()}:${vcardEscape(e.value)}`);
-  });
-  (c.addresses || []).forEach((a) => {
-    lines.push(`ADR;TYPE=${(a.label || "OTHER").toUpperCase()}:;;${vcardEscape(a.value)};;;;`);
-    if (a.mapsLink) lines.push(`URL;TYPE=${(a.label || "OTHER").toUpperCase()}-MAP:${vcardEscape(a.mapsLink)}`);
-  });
-  (c.websites || []).forEach((w) => {
-    lines.push(`URL;TYPE=${(w.label || "OTHER").toUpperCase()}:${vcardEscape(w.value)}`);
-  });
-  if (c.birthday) lines.push(`BDAY:${c.birthday.replace(/-/g, "")}`);
-  (c.notesList || []).filter((n) => n.kind === "note" && n.text).forEach((n) => {
-    lines.push(`NOTE:${vcardEscape(n.title ? `${n.title}: ${n.text}` : n.text)}`);
-  });
+  if (include("company")) {
+    if (c.jobTitle) lines.push(`TITLE:${vcardEscape(c.jobTitle)}`);
+    if (c.company) lines.push(`ORG:${vcardEscape(c.company)}`);
+  }
+  if (include("phones")) {
+    (c.phones || []).forEach((p) => {
+      const type = p.label === "mobile" ? "CELL" : (p.label || "OTHER").toUpperCase();
+      lines.push(`TEL;TYPE=${type}:${vcardEscape(p.value)}`);
+    });
+  }
+  if (include("emails")) {
+    (c.emails || []).forEach((e) => {
+      lines.push(`EMAIL;TYPE=${(e.label || "OTHER").toUpperCase()}:${vcardEscape(e.value)}`);
+    });
+  }
+  if (include("addresses")) {
+    (c.addresses || []).forEach((a) => {
+      lines.push(`ADR;TYPE=${(a.label || "OTHER").toUpperCase()}:;;${vcardEscape(a.value)};;;;`);
+      if (a.mapsLink) lines.push(`URL;TYPE=${(a.label || "OTHER").toUpperCase()}-MAP:${vcardEscape(a.mapsLink)}`);
+    });
+  }
+  if (include("websites")) {
+    (c.websites || []).forEach((w) => {
+      lines.push(`URL;TYPE=${(w.label || "OTHER").toUpperCase()}:${vcardEscape(w.value)}`);
+    });
+  }
+  if (include("birthday") && c.birthday) lines.push(`BDAY:${c.birthday.replace(/-/g, "")}`);
+  if (include("notes")) {
+    (c.notesList || []).filter((n) => n.kind === "note" && n.text).forEach((n) => {
+      lines.push(`NOTE:${vcardEscape(n.title ? `${n.title}: ${n.text}` : n.text)}`);
+    });
+  }
   lines.push("END:VCARD");
   return lines.join("\r\n");
 }

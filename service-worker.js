@@ -1,14 +1,16 @@
-const CACHE_NAME = "crm-cache-v10";
+const CACHE_NAME = "crm-cache-v11";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
   "./css/styles.css",
+  "./js/vendor/qrcode.js",
   "./js/db.js",
   "./js/contacts.js",
   "./js/photo-crop.js",
   "./js/vcard.js",
   "./js/schedule.js",
+  "./js/qr.js",
   "./js/app.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

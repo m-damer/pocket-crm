@@ -76,6 +76,61 @@ document.querySelectorAll("#filter-chips .chip").forEach((chip) => {
   });
 });
 
+// ---------------- Wiring: bulk select + share ----------------
+function updateSelectBar() {
+  const count = Contacts.selectedIds.size;
+  document.getElementById("contacts-header-title").textContent = Contacts.selectMode ? `${count} selected` : "Contacts";
+  document.getElementById("btn-export").hidden = Contacts.selectMode;
+  document.getElementById("btn-select-share").hidden = !Contacts.selectMode;
+  const selectBtn = document.getElementById("btn-select-mode");
+  selectBtn.title = Contacts.selectMode ? "Cancel selection" : "Select contacts";
+  selectBtn.innerHTML = Contacts.selectMode
+    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/></svg>`;
+  const fab = document.getElementById("fab-add");
+  if (Contacts.selectMode) fab.style.display = "none";
+  else if (FAB_ACTIONS[document.querySelector(".nav-item.active")?.dataset.tab]) fab.style.display = "flex";
+}
+
+document.getElementById("btn-select-mode").addEventListener("click", () => {
+  if (Contacts.selectMode) Contacts.exitSelectMode();
+  else Contacts.enterSelectMode();
+});
+
+async function shareSelectedContacts() {
+  const ids = Array.from(Contacts.selectedIds);
+  if (ids.length === 0) {
+    showToast("Select at least one contact");
+    return;
+  }
+  openFieldPicker(async (selectedKeys) => {
+    const all = await DB.getAll();
+    const chosen = all.filter((c) => ids.includes(c.id));
+    const vcard = chosen.map((c) => contactToVCard(c, selectedKeys)).join("\r\n");
+    const filename = chosen.length === 1
+      ? `${fullName(chosen[0]).replace(/[^\w\- ]/g, "").trim() || "contact"}.vcf`
+      : `crm-contacts-${new Date().toISOString().slice(0, 10)}.vcf`;
+
+    let shared = false;
+    if (navigator.canShare && navigator.share) {
+      try {
+        const file = new File([vcard], filename, { type: "text/vcard" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          shared = true;
+        }
+      } catch (e) { /* fall through to download */ }
+    }
+    if (!shared) {
+      downloadFile(vcard, filename, "text/vcard");
+      showToast("Contact file downloaded");
+    }
+    closeAllScreens();
+    Contacts.exitSelectMode();
+  });
+}
+document.getElementById("btn-select-share").addEventListener("click", shareSelectedContacts);
+
 // ---------------- Wiring: Photo picker + crop ----------------
 document.getElementById("photo-input").addEventListener("change", (e) => {
   const file = e.target.files[0];
@@ -303,6 +358,61 @@ document.getElementById("row-import-picker").addEventListener("click", importFro
 if (contactPickerSupported()) {
   document.getElementById("row-import-picker").style.display = "flex";
 }
+
+// ---------------- Wiring: shared field picker ----------------
+document.getElementById("btn-field-picker-cancel").addEventListener("click", () => {
+  fieldPickerOnConfirm = null;
+  closeAllScreens();
+});
+document.getElementById("btn-field-picker-confirm").addEventListener("click", () => {
+  const cb = fieldPickerOnConfirm;
+  fieldPickerOnConfirm = null;
+  if (cb) cb(fieldPickerSelected.slice());
+});
+document.getElementById("fp-select-all").addEventListener("click", () => {
+  fieldPickerSelected = SHARE_FIELD_ALL_KEYS.slice();
+  renderFieldPicker();
+});
+document.getElementById("fp-select-none").addEventListener("click", () => {
+  fieldPickerSelected = [];
+  renderFieldPicker();
+});
+
+// ---------------- Wiring: QR codes ----------------
+document.getElementById("row-qr-codes").addEventListener("click", async () => {
+  await renderQRList();
+  showScreen("screen-qr-list");
+});
+document.getElementById("btn-qr-list-back").addEventListener("click", closeAllScreens);
+document.getElementById("btn-qr-generate").addEventListener("click", () => showScreen("screen-qr-source"));
+document.getElementById("btn-qr-source-back").addEventListener("click", () => closeScreen("screen-qr-source"));
+
+document.getElementById("row-qr-from-crm").addEventListener("click", async () => {
+  closeScreen("screen-qr-source");
+  await openQRContactPicker();
+});
+document.getElementById("row-qr-from-phone").addEventListener("click", () => {
+  closeScreen("screen-qr-source");
+  pickQRFromPhoneContacts();
+});
+if (contactPickerSupported()) {
+  document.getElementById("row-qr-from-phone").style.display = "flex";
+}
+document.getElementById("row-qr-manual").addEventListener("click", () => {
+  closeScreen("screen-qr-source");
+  openQRManualForm();
+});
+
+document.getElementById("btn-qr-picker-cancel").addEventListener("click", () => closeScreen("screen-qr-contact-picker"));
+document.getElementById("btn-qr-picker-confirm").addEventListener("click", confirmQRContactPicker);
+
+document.getElementById("btn-qr-manual-cancel").addEventListener("click", () => closeScreen("screen-qr-manual"));
+document.getElementById("btn-qr-manual-continue").addEventListener("click", confirmQRManualForm);
+
+document.getElementById("btn-qr-view-back").addEventListener("click", () => closeScreen("screen-qr-view"));
+document.getElementById("btn-qr-view-delete").addEventListener("click", deleteQRCode);
+document.getElementById("btn-qr-download").addEventListener("click", downloadQRImage);
+document.getElementById("btn-qr-share").addEventListener("click", shareQRImage);
 
 // ---------------- Wiring: Schedule ----------------
 document.getElementById("btn-ev-cancel").addEventListener("click", closeAllScreens);

@@ -455,6 +455,7 @@ const Settings = {
           contactFieldConfig: DEFAULT_CONTACT_FIELD_CONFIG,
           tags: [], // {id, name, color}
           tagsMigrated: false,
+          qrCodes: [], // {id, label, vcardText, createdAt}
           ...value,
         });
       };
@@ -524,6 +525,33 @@ const Tags = {
       counts[tid] = (counts[tid] || 0) + 1;
     }));
     return counts;
+  },
+};
+
+// ---------------- QR codes (saved, shareable contact-card codes) ----------------
+const QRCodes = {
+  async getAll() {
+    const s = await Settings.get();
+    return s.qrCodes || [];
+  },
+
+  async add(record) {
+    const s = await Settings.get();
+    const qrCodes = (s.qrCodes || []).slice();
+    const entry = {
+      id: uid("q"), label: "", vcardText: "",
+      createdAt: new Date().toISOString(),
+      ...record,
+    };
+    qrCodes.unshift(entry);
+    await Settings.update({ qrCodes });
+    return entry;
+  },
+
+  async remove(id) {
+    const s = await Settings.get();
+    const qrCodes = (s.qrCodes || []).filter((q) => q.id !== id);
+    await Settings.update({ qrCodes });
   },
 };
 
