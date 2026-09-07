@@ -49,6 +49,8 @@ function uid(prefix = "c") {
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+const TAG_COLOR_PALETTE = ["#1F3D71", "#009BDE", "#1F8A5F", "#C97C1F", "#B3261E", "#8A93A3", "#6B4FA0", "#0E7C86", "#C2185B", "#5D4037"];
+
 // Upgrades an old-shape contact (flat phone/email/address strings) to the
 // new multi-value shape, in place on read. Persists the upgrade once so it
 // only has to run a single time per contact.
@@ -106,8 +108,51 @@ async function getAllFromStore(storeName) {
   });
 }
 
+// One-time upgrade: older builds stored tags as free-typed strings directly
+// on the contact (c.tags = ["VIP", "Damascus"]). This creates a proper global
+// tag (with an id + color) for every unique name ever typed, then rewrites
+// every contact to reference tags by id instead. Runs once per install,
+// gated by settings.tagsMigrated, and cached in memory so repeat calls in
+// the same session are free.
+let _tagsMigrationChecked = false;
+async function ensureTagsMigrated() {
+  if (_tagsMigrationChecked) return;
+  const settings = await Settings.get();
+  if (settings.tagsMigrated) {
+    _tagsMigrationChecked = true;
+    return;
+  }
+
+  const raw = await getAllFromStore(STORE_CONTACTS);
+  const tags = (settings.tags || []).slice();
+  const nameToId = new Map(tags.map((t) => [t.name.trim().toLowerCase(), t.id]));
+
+  for (const c of raw) {
+    const oldTags = Array.isArray(c.tags) ? c.tags : [];
+    if (oldTags.length === 0) continue;
+    const newTagIds = [];
+    for (const rawName of oldTags) {
+      const name = String(rawName || "").trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      let id = nameToId.get(key);
+      if (!id) {
+        id = uid("t");
+        tags.push({ id, name, color: TAG_COLOR_PALETTE[tags.length % TAG_COLOR_PALETTE.length] });
+        nameToId.set(key, id);
+      }
+      if (!newTagIds.includes(id)) newTagIds.push(id);
+    }
+    await withStore(STORE_CONTACTS, "readwrite", (store) => store.put({ ...c, tags: newTagIds }));
+  }
+
+  await Settings.update({ tags, tagsMigrated: true });
+  _tagsMigrationChecked = true;
+}
+
 const DB = {
   async getAll() {
+    await ensureTagsMigrated();
     const db = await openDB();
     const raw = await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_CONTACTS, "readonly");
@@ -124,6 +169,7 @@ const DB = {
   },
 
   async get(id) {
+    await ensureTagsMigrated();
     const db = await openDB();
     const raw = await new Promise((resolve, reject) => {
       const req = db.transaction(STORE_CONTACTS, "readonly").objectStore(STORE_CONTACTS).get(id);
@@ -373,6 +419,8 @@ const Settings = {
           businessName: "", address: "", phone: "", email: "",
           currency: "USD", logoDataUrl: "", invoiceCounter: 0, proposalCounter: 0,
           contactFieldConfig: DEFAULT_CONTACT_FIELD_CONFIG,
+          tags: [], // {id, name, color}
+          tagsMigrated: false,
           ...value,
         });
       };
@@ -385,6 +433,63 @@ const Settings = {
     const updated = { ...current, ...patch };
     await withStore(STORE_SETTINGS, "readwrite", (store) => store.put({ key: "business", value: updated }));
     return updated;
+  },
+};
+
+// ---------------- Tags (global registry, referenced by id from contacts) ----------------
+const Tags = {
+  async getAll() {
+    await ensureTagsMigrated();
+    const s = await Settings.get();
+    return s.tags || [];
+  },
+
+  async add(name, color) {
+    await ensureTagsMigrated();
+    const s = await Settings.get();
+    const tags = (s.tags || []).slice();
+    const tag = {
+      id: uid("t"),
+      name: String(name || "").trim(),
+      color: color || TAG_COLOR_PALETTE[tags.length % TAG_COLOR_PALETTE.length],
+    };
+    tags.push(tag);
+    await Settings.update({ tags });
+    return tag;
+  },
+
+  async update(id, patch) {
+    await ensureTagsMigrated();
+    const s = await Settings.get();
+    const tags = (s.tags || []).map((t) => (t.id === id ? { ...t, ...patch } : t));
+    await Settings.update({ tags });
+  },
+
+  // Deletes the tag and removes it from every contact that had it.
+  async remove(id) {
+    await ensureTagsMigrated();
+    const s = await Settings.get();
+    const tags = (s.tags || []).filter((t) => t.id !== id);
+    await Settings.update({ tags });
+    const all = await getAllFromStore(STORE_CONTACTS);
+    for (const c of all) {
+      if (Array.isArray(c.tags) && c.tags.includes(id)) {
+        await withStore(STORE_CONTACTS, "readwrite", (store) =>
+          store.put({ ...c, tags: c.tags.filter((tid) => tid !== id) })
+        );
+      }
+    }
+  },
+
+  // { [tagId]: numberOfContacts }
+  async countsById() {
+    await ensureTagsMigrated();
+    const all = await getAllFromStore(STORE_CONTACTS);
+    const counts = {};
+    all.forEach((c) => (Array.isArray(c.tags) ? c.tags : []).forEach((tid) => {
+      counts[tid] = (counts[tid] || 0) + 1;
+    }));
+    return counts;
   },
 };
 

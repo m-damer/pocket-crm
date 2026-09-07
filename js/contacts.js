@@ -173,6 +173,7 @@ function renderFieldGroupHTML(key, c) {
 async function renderInfoTab(c) {
   const settings = await Settings.get();
   const config = settings.contactFieldConfig || DEFAULT_CONTACT_FIELD_CONFIG;
+  const allTags = await Tags.getAll();
   const groupsHTML = config
     .filter((f) => f.visible)
     .map((f) => renderFieldGroupHTML(f.key, c))
@@ -182,7 +183,10 @@ async function renderInfoTab(c) {
     <div class="field-list">
       <div class="field-row"><p class="label">Category</p><p class="value">${CAT_META[c.category].label}</p></div>
       ${groupsHTML}
-      ${c.tags && c.tags.length ? `<div class="field-row"><p class="label">Tags</p><div class="tag-row">${c.tags.map((t) => `<span class="tag">${escapeHTML(t)}</span>`).join("")}</div></div>` : ""}
+      ${c.tags && c.tags.length ? `<div class="field-row"><p class="label">Tags</p><div class="tag-row">${c.tags.map((tid) => {
+        const t = allTags.find((x) => x.id === tid);
+        return t ? `<span class="tag" style="background:${t.color};color:#fff">${escapeHTML(t.name)}</span>` : "";
+      }).join("")}</div></div>` : ""}
       <div class="field-row"><p class="label">Added</p><p class="value">${fmtDate(c.createdAt)}</p></div>
     </div>
     ${await renderLinkedEvents(c.id)}
@@ -463,6 +467,109 @@ function readMultiFieldEditor(containerId, isAddress) {
   return out;
 }
 
+// ---------------- Shared: color swatch picker (tag colors) ----------------
+function renderColorSwatches(containerId, selectedColor) {
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = TAG_COLOR_PALETTE.map((c) => `
+    <button type="button" class="tag-swatch ${c === selectedColor ? "selected" : ""}" data-color="${c}" style="background:${c}" title="${c}"></button>
+  `).join("");
+  wrap.dataset.selected = selectedColor;
+  wrap.querySelectorAll(".tag-swatch").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      wrap.querySelectorAll(".tag-swatch").forEach((b) => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      wrap.dataset.selected = btn.dataset.color;
+    });
+  });
+}
+
+// ---------------- Contact form: tag picker (dropdown + inline "add new") ----------------
+async function renderTagChips() {
+  const allTags = await Tags.getAll();
+  const wrap = document.getElementById("f-tags-chips");
+  if (formTagIds.length === 0) {
+    wrap.innerHTML = `<p class="hint-text" style="margin:0 0 8px">No tags yet</p>`;
+    return;
+  }
+  wrap.innerHTML = formTagIds.map((id) => {
+    const t = allTags.find((x) => x.id === id);
+    if (!t) return "";
+    return `
+      <span class="tag-chip" style="background:${t.color}">
+        ${escapeHTML(t.name)}
+        <button type="button" class="tag-chip-remove" data-id="${t.id}" title="Remove">&times;</button>
+      </span>
+    `;
+  }).join("");
+  wrap.querySelectorAll(".tag-chip-remove").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      formTagIds = formTagIds.filter((id) => id !== btn.dataset.id);
+      await renderTagChips();
+      await renderTagDropdownList();
+    });
+  });
+}
+
+async function renderTagDropdownList() {
+  const allTags = await Tags.getAll();
+  const wrap = document.getElementById("tag-dropdown-list");
+  if (allTags.length === 0) {
+    wrap.innerHTML = `<p class="hint-text" style="margin:2px 0 0">No tags yet — add one below</p>`;
+    return;
+  }
+  wrap.innerHTML = allTags.map((t) => `
+    <label class="tag-dropdown-row">
+      <input type="checkbox" class="tag-check" value="${t.id}" ${formTagIds.includes(t.id) ? "checked" : ""} />
+      <span class="tag-dot" style="background:${t.color}"></span>
+      <span>${escapeHTML(t.name)}</span>
+    </label>
+  `).join("");
+  wrap.querySelectorAll(".tag-check").forEach((cb) => {
+    cb.addEventListener("change", async () => {
+      if (cb.checked) {
+        if (!formTagIds.includes(cb.value)) formTagIds.push(cb.value);
+      } else {
+        formTagIds = formTagIds.filter((id) => id !== cb.value);
+      }
+      await renderTagChips();
+    });
+  });
+}
+
+async function addNewTagFromForm() {
+  const nameInput = document.getElementById("new-tag-name");
+  const name = nameInput.value.trim();
+  if (!name) { showToast("Enter a tag name"); return; }
+  const allTags = await Tags.getAll();
+  const dupe = allTags.find((t) => t.name.toLowerCase() === name.toLowerCase());
+  if (dupe) {
+    if (!formTagIds.includes(dupe.id)) formTagIds.push(dupe.id);
+    showToast("Tag already exists — selected it");
+  } else {
+    const colorsWrap = document.getElementById("new-tag-colors");
+    const tag = await Tags.add(name, colorsWrap.dataset.selected);
+    formTagIds.push(tag.id);
+  }
+  nameInput.value = "";
+  await renderTagChips();
+  await renderTagDropdownList();
+}
+
+function wireTagPickerOnce() {
+  const toggleBtn = document.getElementById("btn-toggle-tag-dropdown");
+  if (toggleBtn.dataset.wired) return;
+  toggleBtn.dataset.wired = "1";
+  toggleBtn.addEventListener("click", async () => {
+    const panel = document.getElementById("tag-dropdown");
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) {
+      await renderTagDropdownList();
+      renderColorSwatches("new-tag-colors", TAG_COLOR_PALETTE[0]);
+    }
+  });
+  document.getElementById("btn-add-new-tag").addEventListener("click", addNewTagFromForm);
+}
+
 // ---------------- Add / Edit form ----------------
 let formEditingId = null;
 let formCategory = "customer";
@@ -471,6 +578,7 @@ let formEmails = [];
 let formAddresses = [];
 let formWebsites = [];
 let formCustomFields = [];
+let formTagIds = [];
 let formPhotoDataUrl = "";
 
 async function openForm(id) {
@@ -479,7 +587,7 @@ async function openForm(id) {
   formPhotoDataUrl = "";
   document.getElementById("form-title").textContent = id ? "Edit contact" : "New contact";
 
-  ["first", "last", "nickname", "company", "jobtitle", "birthday", "tags", "notes"].forEach((f) => {
+  ["first", "last", "nickname", "company", "jobtitle", "birthday", "notes"].forEach((f) => {
     const el = document.getElementById("f-" + f);
     if (el) el.value = "";
   });
@@ -488,6 +596,7 @@ async function openForm(id) {
   formAddresses = [];
   formWebsites = [];
   formCustomFields = [];
+  formTagIds = [];
   updatePhotoPreview();
 
   if (id) {
@@ -499,13 +608,13 @@ async function openForm(id) {
       document.getElementById("f-company").value = c.company || "";
       document.getElementById("f-jobtitle").value = c.jobTitle || "";
       document.getElementById("f-birthday").value = c.birthday || "";
-      document.getElementById("f-tags").value = (c.tags || []).join(", ");
       document.getElementById("f-notes").value = c.notes || "";
       formPhones = (c.phones || []).map((p) => ({ ...p }));
       formEmails = (c.emails || []).map((e) => ({ ...e }));
       formAddresses = (c.addresses || []).map((a) => ({ ...a }));
       formWebsites = (c.websites || []).map((w) => ({ ...w }));
       formCustomFields = (c.customFields || []).map((f) => ({ ...f }));
+      formTagIds = (c.tags || []).slice();
       formPhotoDataUrl = c.photoDataUrl || "";
       formCategory = c.category || "customer";
     }
@@ -519,6 +628,9 @@ async function openForm(id) {
   renderMultiFieldEditor("f-addresses", formAddresses, "addresses");
   renderMultiFieldEditor("f-websites", formWebsites, "websites");
   renderCustomFieldsEditor("f-customfields", formCustomFields);
+  document.getElementById("tag-dropdown").hidden = true;
+  await renderTagChips();
+  wireTagPickerOnce();
   updatePhotoPreview();
   await applyFieldVisibilityToForm();
   showScreen("screen-form");
@@ -567,8 +679,7 @@ async function saveForm() {
     websites: readMultiFieldEditor("f-websites", false),
     customFields: readCustomFieldsEditor("f-customfields"),
     photoDataUrl: formPhotoDataUrl,
-    tags: document.getElementById("f-tags").value
-      .split(",").map((t) => t.trim()).filter(Boolean),
+    tags: formTagIds.slice(),
     notes: document.getElementById("f-notes").value,
     category: formCategory,
   };
