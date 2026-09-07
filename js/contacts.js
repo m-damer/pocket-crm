@@ -3,6 +3,16 @@ const CAT_META = {
   lead: { label: "Lead", color: "#C97C1F" },
   lost: { label: "Lost", color: "#8A93A3" },
 };
+const LABEL_META = { mobile: "Mobile", home: "Home", work: "Work", other: "Other" };
+const FIELD_GROUP_META = {
+  nickname: "Nickname",
+  companyJobTitle: "Company & job title",
+  phones: "Phone numbers",
+  emails: "Emails",
+  addresses: "Addresses",
+  website: "Website",
+  birthday: "Birthday",
+};
 
 function initials(c) {
   const a = (c.firstName || "").trim()[0] || "";
@@ -14,10 +24,31 @@ function fullName(c) {
   return [c.firstName, c.lastName].filter(Boolean).join(" ") || "Unnamed contact";
 }
 
+function primaryPhone(c) { return (c.phones && c.phones[0] && c.phones[0].value) || ""; }
+function primaryEmail(c) { return (c.emails && c.emails[0] && c.emails[0].value) || ""; }
+function primaryAddress(c) { return (c.addresses && c.addresses[0]) || null; }
+
+function waLink(phone) {
+  const digits = String(phone || "").replace(/[^\d+]/g, "").replace(/^\+/, "");
+  return digits ? `https://wa.me/${digits}` : "";
+}
+
 function fmtDate(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) +
     " · " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtBirthday(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[m]));
 }
 
 const Contacts = {
@@ -35,8 +66,12 @@ const Contacts = {
       if (this.filter !== "all" && c.category !== this.filter) return false;
       if (!this.query) return true;
       const q = this.query.toLowerCase();
-      return [c.firstName, c.lastName, c.company, c.phone, c.email]
-        .filter(Boolean).some((v) => v.toLowerCase().includes(q));
+      const haystack = [
+        c.firstName, c.lastName, c.nickname, c.company, c.jobTitle,
+        ...(c.phones || []).map((p) => p.value),
+        ...(c.emails || []).map((e) => e.value),
+      ].filter(Boolean);
+      return haystack.some((v) => v.toLowerCase().includes(q));
     });
   },
 
@@ -54,10 +89,12 @@ const Contacts = {
     }
     listEl.innerHTML = items.map((c) => `
       <div class="contact-row" data-id="${c.id}">
-        <div class="avatar" style="background:${CAT_META[c.category].color}">${initials(c)}</div>
+        ${c.photoDataUrl
+          ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover" />`
+          : `<div class="avatar" style="background:${CAT_META[c.category].color}">${initials(c)}</div>`}
         <div class="contact-info">
           <p class="contact-name">${escapeHTML(fullName(c))}</p>
-          <p class="contact-sub">${escapeHTML(c.company || c.phone || c.email || "")}</p>
+          <p class="contact-sub">${escapeHTML(c.company || primaryPhone(c) || primaryEmail(c) || "")}</p>
         </div>
         <span class="badge ${c.category}">${CAT_META[c.category].label}</span>
       </div>
@@ -72,12 +109,6 @@ const Contacts = {
     this.renderList();
   },
 };
-
-function escapeHTML(s) {
-  return String(s).replace(/[&<>"']/g, (m) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[m]));
-}
 
 async function renderLinkedEvents(contactId) {
   const events = (await Events.forContact(contactId))
@@ -97,6 +128,58 @@ async function renderLinkedEvents(contactId) {
   `;
 }
 
+// ---------------- Info tab field groups (order/visibility driven by Settings) ----------------
+function renderFieldGroupHTML(key, c) {
+  switch (key) {
+    case "nickname":
+      return c.nickname ? `<div class="field-row"><p class="label">Nickname</p><p class="value">${escapeHTML(c.nickname)}</p></div>` : "";
+    case "companyJobTitle":
+      if (!c.company && !c.jobTitle) return "";
+      return `<div class="field-row"><p class="label">Company</p><p class="value">${escapeHTML([c.jobTitle, c.company].filter(Boolean).join(" · ") || "—")}</p></div>`;
+    case "phones":
+      return (c.phones || []).map((p) => `
+        <div class="field-row"><p class="label">${LABEL_META[p.label] || "Phone"}</p><p class="value">${escapeHTML(p.value)}</p></div>
+      `).join("");
+    case "emails":
+      return (c.emails || []).map((e) => `
+        <div class="field-row"><p class="label">${LABEL_META[e.label] || "Email"}</p><p class="value">${escapeHTML(e.value)}</p></div>
+      `).join("");
+    case "addresses":
+      return (c.addresses || []).map((a) => `
+        <div class="field-row">
+          <p class="label">${LABEL_META[a.label] || "Address"}</p>
+          <p class="value">${escapeHTML(a.value)}</p>
+          ${a.mapsLink ? `<a href="${escapeHTML(a.mapsLink)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);font-weight:600">Open map link →</a>` : ""}
+        </div>
+      `).join("");
+    case "website":
+      return c.website ? `<div class="field-row"><p class="label">Website</p><p class="value"><a href="${/^https?:\/\//.test(c.website) ? c.website : "https://" + c.website}" target="_blank" rel="noopener" style="color:var(--blue)">${escapeHTML(c.website)}</a></p></div>` : "";
+    case "birthday":
+      return c.birthday ? `<div class="field-row"><p class="label">Birthday</p><p class="value">${fmtBirthday(c.birthday)}</p></div>` : "";
+    default:
+      return "";
+  }
+}
+
+async function renderInfoTab(c) {
+  const settings = await Settings.get();
+  const config = settings.contactFieldConfig || DEFAULT_CONTACT_FIELD_CONFIG;
+  const groupsHTML = config
+    .filter((f) => f.visible)
+    .map((f) => renderFieldGroupHTML(f.key, c))
+    .join("");
+
+  return `
+    <div class="field-list">
+      <div class="field-row"><p class="label">Category</p><p class="value">${CAT_META[c.category].label}</p></div>
+      ${groupsHTML}
+      ${c.tags && c.tags.length ? `<div class="field-row"><p class="label">Tags</p><div class="tag-row">${c.tags.map((t) => `<span class="tag">${escapeHTML(t)}</span>`).join("")}</div></div>` : ""}
+      <div class="field-row"><p class="label">Added</p><p class="value">${fmtDate(c.createdAt)}</p></div>
+    </div>
+    ${await renderLinkedEvents(c.id)}
+  `;
+}
+
 // ---------------- Detail screen ----------------
 let detailTab = "info";
 
@@ -112,26 +195,29 @@ async function renderDetail() {
   if (!c) return;
 
   document.getElementById("detail-hero").innerHTML = `
-    <div class="avatar" style="background:rgba(255,255,255,0.18)">${initials(c)}</div>
-    <h2>${escapeHTML(fullName(c))}</h2>
-    <p>${escapeHTML(c.company || CAT_META[c.category].label)}</p>
+    ${c.photoDataUrl
+      ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover;width:56px;height:56px" />`
+      : `<div class="avatar" style="background:rgba(255,255,255,0.18)">${initials(c)}</div>`}
+    <h2>${escapeHTML(fullName(c))}${c.nickname ? ` <span style="opacity:0.75;font-weight:400">"${escapeHTML(c.nickname)}"</span>` : ""}</h2>
+    <p>${escapeHTML(c.jobTitle && c.company ? `${c.jobTitle} · ${c.company}` : (c.company || CAT_META[c.category].label))}</p>
   `;
 
-  const hasPhone = !!c.phone, hasEmail = !!c.email, hasAddress = !!c.address;
+  const phone = primaryPhone(c), email = primaryEmail(c), addr = primaryAddress(c);
+  const mapsHref = addr ? (addr.mapsLink || "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr.value)) : "#";
   document.getElementById("detail-qa").innerHTML = `
-    <a class="qa-btn ${hasPhone ? "" : "disabled"}" href="${hasPhone ? "tel:" + c.phone : "#"}">
+    <a class="qa-btn ${phone ? "" : "disabled"}" href="${phone ? "tel:" + phone : "#"}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
       Call
     </a>
-    <a class="qa-btn ${hasPhone ? "" : "disabled"}" href="${hasPhone ? "sms:" + c.phone : "#"}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      Message
+    <a class="qa-btn ${phone ? "" : "disabled"}" target="_blank" rel="noopener" href="${phone ? waLink(phone) : "#"}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 01-12.3 7.6L3 20l1-5.5A8.5 8.5 0 1121 11.5z"/><path d="M8.5 10.5c.3 2 2.7 4.3 4.7 4.6.8.1 1.6-.4 1.8-1.2"/></svg>
+      WhatsApp
     </a>
-    <a class="qa-btn ${hasEmail ? "" : "disabled"}" href="${hasEmail ? "mailto:" + c.email : "#"}">
+    <a class="qa-btn ${email ? "" : "disabled"}" href="${email ? "mailto:" + email : "#"}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
       Email
     </a>
-    <a class="qa-btn ${hasAddress ? "" : "disabled"}" target="_blank" rel="noopener" href="${hasAddress ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(c.address) : "#"}">
+    <a class="qa-btn ${addr ? "" : "disabled"}" target="_blank" rel="noopener" href="${mapsHref}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
       Directions
     </a>
@@ -142,17 +228,7 @@ async function renderDetail() {
   `;
   document.getElementById("btn-save-to-phone").addEventListener("click", () => saveContactToPhone(c.id));
 
-  document.getElementById("detail-tab-info").innerHTML = `
-    <div class="field-list">
-      <div class="field-row"><p class="label">Category</p><p class="value">${CAT_META[c.category].label}</p></div>
-      ${c.phone ? `<div class="field-row"><p class="label">Phone</p><p class="value">${escapeHTML(c.phone)}</p></div>` : ""}
-      ${c.email ? `<div class="field-row"><p class="label">Email</p><p class="value">${escapeHTML(c.email)}</p></div>` : ""}
-      ${c.address ? `<div class="field-row"><p class="label">Address</p><p class="value">${escapeHTML(c.address)}</p></div>` : ""}
-      ${c.tags && c.tags.length ? `<div class="field-row"><p class="label">Tags</p><div class="tag-row">${c.tags.map((t) => `<span class="tag">${escapeHTML(t)}</span>`).join("")}</div></div>` : ""}
-      <div class="field-row"><p class="label">Added</p><p class="value">${fmtDate(c.createdAt)}</p></div>
-    </div>
-    ${await renderLinkedEvents(c.id)}
-  `;
+  document.getElementById("detail-tab-info").innerHTML = await renderInfoTab(c);
 
   const activities = c.activities || [];
   document.getElementById("detail-tab-activity").innerHTML = `
@@ -250,36 +326,138 @@ function setDetailTab(tab) {
   });
 }
 
+// ---------------- Multi-value field editors (phones / emails / addresses) ----------------
+function syncMultiFieldFromDOM(containerId, items, isAddress) {
+  const rows = document.querySelectorAll(`#${containerId} .multi-field-row`);
+  rows.forEach((row, idx) => {
+    if (!items[idx]) return;
+    items[idx].label = row.querySelector(".mf-label").value;
+    items[idx].value = row.querySelector(".mf-value").value;
+    if (isAddress) items[idx].mapsLink = row.querySelector(".mf-maps").value;
+  });
+}
+
+function renderMultiFieldEditor(containerId, items, kind) {
+  const wrap = document.getElementById(containerId);
+  const isAddress = kind === "addresses";
+  wrap.innerHTML = items.map((it, idx) => `
+    <div class="item-row multi-field-row" data-idx="${idx}">
+      <select class="mf-label">
+        ${Object.entries(LABEL_META).map(([k, v]) => `<option value="${k}" ${it.label === k ? "selected" : ""}>${v}</option>`).join("")}
+      </select>
+      <div class="mf-value-col">
+        <input type="text" class="mf-value" placeholder="${isAddress ? "Address" : kind === "emails" ? "Email" : "Phone number"}" value="${escapeHTML(it.value || "")}" />
+        ${isAddress ? `<input type="text" class="mf-maps" placeholder="Google Maps link (optional)" value="${escapeHTML(it.mapsLink || "")}" />` : ""}
+      </div>
+      <button type="button" class="it-remove" title="Remove">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+  `).join("") + `<button type="button" class="btn-add-item" data-add="${containerId}">+ Add ${isAddress ? "address" : kind === "emails" ? "email" : "phone"}</button>`;
+
+  wrap.querySelectorAll(".it-remove").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      syncMultiFieldFromDOM(containerId, items, isAddress); // preserve what's typed in the other rows
+      const idx = Number(btn.closest(".multi-field-row").dataset.idx);
+      items.splice(idx, 1);
+      renderMultiFieldEditor(containerId, items, kind);
+    });
+  });
+  wrap.querySelector("[data-add]").addEventListener("click", () => {
+    syncMultiFieldFromDOM(containerId, items, isAddress); // preserve what's typed before adding a new row
+    items.push(isAddress ? { label: "home", value: "", mapsLink: "" } : { label: "mobile", value: "" });
+    renderMultiFieldEditor(containerId, items, kind);
+  });
+}
+
+function readMultiFieldEditor(containerId, isAddress) {
+  const rows = document.querySelectorAll(`#${containerId} .multi-field-row`);
+  const out = [];
+  rows.forEach((row) => {
+    const label = row.querySelector(".mf-label").value;
+    const value = row.querySelector(".mf-value").value.trim();
+    if (!value) return;
+    const entry = { id: uid(isAddress ? "a" : "f"), label, value };
+    if (isAddress) entry.mapsLink = row.querySelector(".mf-maps").value.trim();
+    out.push(entry);
+  });
+  return out;
+}
+
 // ---------------- Add / Edit form ----------------
 let formEditingId = null;
 let formCategory = "customer";
+let formPhones = [];
+let formEmails = [];
+let formAddresses = [];
+let formPhotoDataUrl = "";
 
-function openForm(id) {
+async function openForm(id) {
   formEditingId = id || null;
   formCategory = "customer";
+  formPhotoDataUrl = "";
   document.getElementById("form-title").textContent = id ? "Edit contact" : "New contact";
 
-  const fields = ["first", "last", "company", "phone", "email", "address", "tags", "notes"];
-  fields.forEach((f) => (document.getElementById("f-" + f).value = ""));
+  ["first", "last", "nickname", "company", "jobtitle", "website", "birthday", "tags", "notes"].forEach((f) => {
+    const el = document.getElementById("f-" + f);
+    if (el) el.value = "";
+  });
+  formPhones = [{ label: "mobile", value: "" }];
+  formEmails = [{ label: "other", value: "" }];
+  formAddresses = [];
+  updatePhotoPreview();
 
   if (id) {
-    DB.get(id).then((c) => {
-      if (!c) return;
+    const c = await DB.get(id);
+    if (c) {
       document.getElementById("f-first").value = c.firstName || "";
       document.getElementById("f-last").value = c.lastName || "";
+      document.getElementById("f-nickname").value = c.nickname || "";
       document.getElementById("f-company").value = c.company || "";
-      document.getElementById("f-phone").value = c.phone || "";
-      document.getElementById("f-email").value = c.email || "";
-      document.getElementById("f-address").value = c.address || "";
+      document.getElementById("f-jobtitle").value = c.jobTitle || "";
+      document.getElementById("f-website").value = c.website || "";
+      document.getElementById("f-birthday").value = c.birthday || "";
       document.getElementById("f-tags").value = (c.tags || []).join(", ");
       document.getElementById("f-notes").value = c.notes || "";
+      formPhones = (c.phones || []).map((p) => ({ ...p }));
+      formEmails = (c.emails || []).map((e) => ({ ...e }));
+      formAddresses = (c.addresses || []).map((a) => ({ ...a }));
+      formPhotoDataUrl = c.photoDataUrl || "";
       formCategory = c.category || "customer";
-      setFormCategory(formCategory);
-    });
-  } else {
-    setFormCategory("customer");
+    }
   }
+  if (formPhones.length === 0) formPhones = [{ label: "mobile", value: "" }];
+  if (formEmails.length === 0) formEmails = [{ label: "other", value: "" }];
+
+  setFormCategory(formCategory);
+  renderMultiFieldEditor("f-phones", formPhones, "phones");
+  renderMultiFieldEditor("f-emails", formEmails, "emails");
+  renderMultiFieldEditor("f-addresses", formAddresses, "addresses");
+  updatePhotoPreview();
+  await applyFieldVisibilityToForm();
   showScreen("screen-form");
+}
+
+function updatePhotoPreview() {
+  const el = document.getElementById("photo-preview");
+  if (formPhotoDataUrl) {
+    el.innerHTML = `<img src="${formPhotoDataUrl}" />`;
+  } else {
+    el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1"/></svg>`;
+  }
+}
+
+async function applyFieldVisibilityToForm() {
+  const settings = await Settings.get();
+  const config = settings.contactFieldConfig || DEFAULT_CONTACT_FIELD_CONFIG;
+  const container = document.getElementById("dynamic-field-groups");
+  config.forEach((f) => {
+    const el = container.querySelector(`[data-field="${f.key}"]`);
+    if (el) {
+      el.hidden = !f.visible;
+      container.appendChild(el); // re-append in config order
+    }
+  });
 }
 
 function setFormCategory(cat) {
@@ -293,10 +471,15 @@ async function saveForm() {
   const payload = {
     firstName: document.getElementById("f-first").value.trim(),
     lastName: document.getElementById("f-last").value.trim(),
+    nickname: document.getElementById("f-nickname").value.trim(),
     company: document.getElementById("f-company").value.trim(),
-    phone: document.getElementById("f-phone").value.trim(),
-    email: document.getElementById("f-email").value.trim(),
-    address: document.getElementById("f-address").value.trim(),
+    jobTitle: document.getElementById("f-jobtitle").value.trim(),
+    website: document.getElementById("f-website").value.trim(),
+    birthday: document.getElementById("f-birthday").value,
+    phones: readMultiFieldEditor("f-phones", false),
+    emails: readMultiFieldEditor("f-emails", false),
+    addresses: readMultiFieldEditor("f-addresses", true),
+    photoDataUrl: formPhotoDataUrl,
     tags: document.getElementById("f-tags").value
       .split(",").map((t) => t.trim()).filter(Boolean),
     notes: document.getElementById("f-notes").value,

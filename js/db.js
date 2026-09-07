@@ -49,6 +49,36 @@ function uid(prefix = "c") {
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+// Upgrades an old-shape contact (flat phone/email/address strings) to the
+// new multi-value shape, in place on read. Persists the upgrade once so it
+// only has to run a single time per contact.
+function needsContactMigration(c) {
+  return c.phones === undefined || c.emails === undefined || c.addresses === undefined;
+}
+
+function migrateContactShape(c) {
+  if (!needsContactMigration(c)) return c;
+  const migrated = { ...c };
+  if (migrated.phones === undefined) {
+    migrated.phones = c.phone ? [{ id: uid("p"), label: "mobile", value: c.phone }] : [];
+  }
+  if (migrated.emails === undefined) {
+    migrated.emails = c.email ? [{ id: uid("e"), label: "other", value: c.email }] : [];
+  }
+  if (migrated.addresses === undefined) {
+    migrated.addresses = c.address ? [{ id: uid("a"), label: "other", value: c.address, mapsLink: "" }] : [];
+  }
+  if (migrated.nickname === undefined) migrated.nickname = "";
+  if (migrated.jobTitle === undefined) migrated.jobTitle = "";
+  if (migrated.website === undefined) migrated.website = "";
+  if (migrated.birthday === undefined) migrated.birthday = "";
+  if (migrated.photoDataUrl === undefined) migrated.photoDataUrl = "";
+  delete migrated.phone;
+  delete migrated.email;
+  delete migrated.address;
+  return migrated;
+}
+
 async function withStore(storeName, mode, fn) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -72,35 +102,51 @@ async function getAllFromStore(storeName) {
 const DB = {
   async getAll() {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    const raw = await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_CONTACTS, "readonly");
       const req = tx.objectStore(STORE_CONTACTS).getAll();
-      req.onsuccess = () => resolve(req.result.sort((a, b) =>
-        (a.firstName + a.lastName).localeCompare(b.firstName + b.lastName)
-      ));
+      req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
+    const toPersist = raw.filter(needsContactMigration);
+    const migrated = raw.map(migrateContactShape);
+    for (const c of toPersist) {
+      await withStore(STORE_CONTACTS, "readwrite", (store) => store.put(migrateContactShape(c)));
+    }
+    return migrated.sort((a, b) => (a.firstName + a.lastName).localeCompare(b.firstName + b.lastName));
   },
 
   async get(id) {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    const raw = await new Promise((resolve, reject) => {
       const req = db.transaction(STORE_CONTACTS, "readonly").objectStore(STORE_CONTACTS).get(id);
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
+    if (!raw) return raw;
+    if (needsContactMigration(raw)) {
+      const migrated = migrateContactShape(raw);
+      await withStore(STORE_CONTACTS, "readwrite", (store) => store.put(migrated));
+      return migrated;
+    }
+    return raw;
   },
 
   async add(contact) {
     const now = new Date().toISOString();
     const record = {
       id: uid("c"),
+      photoDataUrl: "",
       firstName: "",
       lastName: "",
+      nickname: "",
       company: "",
-      phone: "",
-      email: "",
-      address: "",
+      jobTitle: "",
+      phones: [], // {id, label: mobile|home|work|other, value}
+      emails: [], // {id, label, value}
+      addresses: [], // {id, label, value, mapsLink}
+      website: "",
+      birthday: "", // YYYY-MM-DD
       category: "lead", // customer | lead | lost
       tags: [],
       notes: "",
@@ -297,15 +343,30 @@ const Invoices = {
 };
 
 // ---------------- Settings (business profile + counters) ----------------
+const DEFAULT_CONTACT_FIELD_CONFIG = [
+  { key: "nickname", visible: true },
+  { key: "companyJobTitle", visible: true },
+  { key: "phones", visible: true },
+  { key: "emails", visible: true },
+  { key: "addresses", visible: true },
+  { key: "website", visible: true },
+  { key: "birthday", visible: true },
+];
+
 const Settings = {
   async get() {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const req = db.transaction(STORE_SETTINGS, "readonly").objectStore(STORE_SETTINGS).get("business");
-      req.onsuccess = () => resolve(req.result ? req.result.value : {
-        businessName: "", address: "", phone: "", email: "",
-        currency: "USD", logoDataUrl: "", invoiceCounter: 0, proposalCounter: 0,
-      });
+      req.onsuccess = () => {
+        const value = req.result ? req.result.value : {};
+        resolve({
+          businessName: "", address: "", phone: "", email: "",
+          currency: "USD", logoDataUrl: "", invoiceCounter: 0, proposalCounter: 0,
+          contactFieldConfig: DEFAULT_CONTACT_FIELD_CONFIG,
+          ...value,
+        });
+      };
       req.onerror = () => reject(req.error);
     });
   },

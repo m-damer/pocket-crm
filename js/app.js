@@ -2,14 +2,12 @@
 const TAB_VIEWS = {
   contacts: "view-contacts",
   schedule: "view-schedule",
-  invoices: "view-invoices",
   more: "view-more",
 };
 
 const FAB_ACTIONS = {
   contacts: () => openForm(null),
   schedule: () => openEventForm(null),
-  invoices: () => openInvoiceForm(null),
 };
 
 function switchTab(tab) {
@@ -32,6 +30,9 @@ document.querySelectorAll(".nav-item").forEach((btn) => {
 function showScreen(id) {
   document.getElementById(id).classList.add("open");
 }
+function closeScreen(id) {
+  document.getElementById(id).classList.remove("open");
+}
 function closeAllScreens() {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("open"));
 }
@@ -46,7 +47,7 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
 }
 
-// ---------------- Wiring ----------------
+// ---------------- Wiring: Contacts ----------------
 switchTab("contacts"); // sets the initial FAB action
 document.getElementById("btn-detail-back").addEventListener("click", closeAllScreens);
 document.getElementById("btn-form-cancel").addEventListener("click", closeAllScreens);
@@ -75,6 +76,74 @@ document.querySelectorAll("#filter-chips .chip").forEach((chip) => {
   });
 });
 
+// ---------------- Wiring: Photo picker + crop ----------------
+document.getElementById("photo-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  openPhotoCropFromFile(file);
+  e.target.value = "";
+});
+document.getElementById("btn-remove-photo").addEventListener("click", () => {
+  formPhotoDataUrl = "";
+  updatePhotoPreview();
+});
+document.getElementById("btn-crop-cancel").addEventListener("click", () => closeScreen("screen-photo-crop"));
+document.getElementById("btn-crop-save").addEventListener("click", savePhotoCrop);
+wirePhotoCropEvents();
+
+// ---------------- Wiring: Contact form field settings ----------------
+const FIELD_SETTING_LABELS = {
+  nickname: "Nickname",
+  companyJobTitle: "Company & job title",
+  phones: "Phone numbers",
+  emails: "Emails",
+  addresses: "Addresses",
+  website: "Website",
+  birthday: "Birthday",
+};
+
+async function renderFieldSettingsList() {
+  const settings = await Settings.get();
+  const config = settings.contactFieldConfig || DEFAULT_CONTACT_FIELD_CONFIG;
+  const wrap = document.getElementById("field-settings-list");
+  wrap.innerHTML = config.map((f, idx) => `
+    <div class="field-setting-row" data-idx="${idx}">
+      <div class="fs-controls">
+        <button type="button" class="fs-arrow" data-dir="up" ${idx === 0 ? "disabled" : ""}>&#9650;</button>
+        <button type="button" class="fs-arrow" data-dir="down" ${idx === config.length - 1 ? "disabled" : ""}>&#9660;</button>
+      </div>
+      <span class="fs-label">${FIELD_SETTING_LABELS[f.key] || f.key}</span>
+      <input type="checkbox" class="fs-toggle-input" ${f.visible ? "checked" : ""} />
+    </div>
+  `).join("");
+
+  wrap.querySelectorAll(".fs-arrow").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const idx = Number(btn.closest(".field-setting-row").dataset.idx);
+      const dir = btn.dataset.dir;
+      const newIdx = dir === "up" ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= config.length) return;
+      [config[idx], config[newIdx]] = [config[newIdx], config[idx]];
+      await Settings.update({ contactFieldConfig: config });
+      await renderFieldSettingsList();
+    });
+  });
+  wrap.querySelectorAll(".fs-toggle-input").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const idx = Number(input.closest(".field-setting-row").dataset.idx);
+      config[idx].visible = input.checked;
+      await Settings.update({ contactFieldConfig: config });
+    });
+  });
+}
+
+document.getElementById("row-field-settings").addEventListener("click", async () => {
+  await renderFieldSettingsList();
+  showScreen("screen-field-settings");
+});
+document.getElementById("btn-field-settings-back").addEventListener("click", closeAllScreens);
+
+// ---------------- Wiring: Data export/import ----------------
 function downloadExport(json) {
   const blob = new Blob([json], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -115,7 +184,7 @@ if (contactPickerSupported()) {
   document.getElementById("row-import-picker").style.display = "flex";
 }
 
-// ---------------- Schedule wiring ----------------
+// ---------------- Wiring: Schedule ----------------
 document.getElementById("btn-ev-cancel").addEventListener("click", closeAllScreens);
 document.getElementById("btn-ev-cancel-2").addEventListener("click", closeAllScreens);
 document.getElementById("btn-ev-save").addEventListener("click", saveEventForm);
@@ -133,75 +202,11 @@ document.querySelectorAll("#schedule-chips .chip").forEach((chip) => {
 });
 document.getElementById("btn-route-today").addEventListener("click", () => Schedule.routeToday());
 
-// ---------------- Invoices wiring ----------------
-document.getElementById("btn-inv-cancel").addEventListener("click", closeAllScreens);
-document.getElementById("btn-inv-cancel-2").addEventListener("click", closeAllScreens);
-document.getElementById("btn-inv-save").addEventListener("click", saveInvoiceForm);
-document.getElementById("btn-inv-delete").addEventListener("click", deleteCurrentInvoice);
-document.querySelectorAll("#inv-type button").forEach((b) => {
-  b.addEventListener("click", () => setInvType(b.dataset.type));
-});
-document.getElementById("inv-currency").addEventListener("input", updateInvTotal);
-document.querySelectorAll("#invoice-chips .chip").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    document.querySelectorAll("#invoice-chips .chip").forEach((c) => c.classList.remove("active"));
-    chip.classList.add("active");
-    InvoicesUI.filter = chip.dataset.ifilter;
-    InvoicesUI.renderList();
-  });
-});
-document.getElementById("btn-inv-detail-back").addEventListener("click", closeAllScreens);
-document.getElementById("btn-inv-detail-edit").addEventListener("click", () => openInvoiceForm(InvoicesUI.currentId));
-document.getElementById("btn-inv-export-pdf").addEventListener("click", exportInvoicePDF);
-document.getElementById("btn-inv-detail-delete").addEventListener("click", async () => {
-  if (!InvoicesUI.currentId) return;
-  if (!confirm("Delete this document? This can't be undone.")) return;
-  await Invoices.remove(InvoicesUI.currentId);
-  showToast("Deleted");
-  await InvoicesUI.refresh();
-  closeAllScreens();
-});
-
-// ---------------- Business profile wiring ----------------
-let pendingLogoDataUrl = null;
-document.getElementById("biz-logo").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => { pendingLogoDataUrl = reader.result; };
-  reader.readAsDataURL(file);
-});
-
-async function loadBusinessProfileForm() {
-  const s = await Settings.get();
-  document.getElementById("biz-name").value = s.businessName || "";
-  document.getElementById("biz-address").value = s.address || "";
-  document.getElementById("biz-phone").value = s.phone || "";
-  document.getElementById("biz-email").value = s.email || "";
-  document.getElementById("biz-currency").value = s.currency || "USD";
-}
-
-document.getElementById("btn-biz-save").addEventListener("click", async () => {
-  const patch = {
-    businessName: document.getElementById("biz-name").value.trim(),
-    address: document.getElementById("biz-address").value.trim(),
-    phone: document.getElementById("biz-phone").value.trim(),
-    email: document.getElementById("biz-email").value.trim(),
-    currency: document.getElementById("biz-currency").value.trim() || "USD",
-  };
-  if (pendingLogoDataUrl) patch.logoDataUrl = pendingLogoDataUrl;
-  await Settings.update(patch);
-  pendingLogoDataUrl = null;
-  showToast("Business profile saved");
-});
-
 // ---------------- Boot ----------------
 (async function boot() {
   await Contacts.refresh();
   await Schedule.refresh();
   Schedule.startReminderLoop();
-  await InvoicesUI.refresh();
-  await loadBusinessProfileForm();
 })();
 
 // ---------------- PWA install support ----------------

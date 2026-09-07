@@ -1,40 +1,26 @@
-# Cyberomeda CRM — Phase 4
+# Cyberomeda CRM — Phase 5
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## What works right now
+## Phase 5 — Contact overhaul (this update)
+- **Photo**: add from camera or gallery, with an in-app crop tool (drag to reposition, slider to zoom)
+- **Multi-value fields, like Google Contacts**: unlimited phone numbers, emails, and addresses, each with a label (Mobile/Home/Work/Other)
+- **Google Maps link per address**: paste a maps link directly under any address — Directions and route planning prefer it over a text search when present
+- **Nickname, job title (separate from company), website, birthday**
+- **Contact form field settings** (More tab): choose which of the above fields show in the Add/Edit form, and reorder them
+- **WhatsApp** quick action alongside Call/Email/Directions
+- Existing contacts from earlier versions **upgrade automatically** the first time you open them — nothing to do manually
+- **Invoices/Proposals removed** from the app for now (the code isn't deleted, just disabled, in case it's wanted again later)
 
-**Contacts (Phase 1)**
-- Add, edit, delete contacts — Customer / Lead / Lost categories, color-coded
-- Search and filter, tags, notes, address, activity log
-- One-tap call / SMS / email / directions
+## Also still included from earlier phases
+- Contacts: search, filter, tags, notes, activity log, document attachments, one-tap call/SMS/email/WhatsApp/directions/save-to-phone
+- Schedule: tasks & meetings, agenda, reminders (while the app is open), route planning for today's meetings
+- Phone contacts integration: save to phone, export/import vCard, native Android contact picker, full JSON backup & restore
 
-**Schedule (Phase 2)**
-- Tasks and meetings with date, time, and optional reminder
-- Agenda grouped by day, filters for Upcoming / Today / Completed / All
-- Link any item to a contact — shows under that contact's "Upcoming" section
-- **Route today's meetings** (new) — the map icon in the Schedule header opens Google Maps with a driving route through every meeting scheduled today that has an address, in time order
-
-**Invoices & Proposals (Phase 3)**
-- Business profile (name, address, logo, currency) used on every document
-- Line items with live totals, auto-numbering, status tracking
-- Clean preview + real PDF export/share
-
-**New in Phase 4**
-- **Directions**: every contact with an address gets a one-tap "Directions" button that opens it in Google Maps
-- **Documents**: attach files (contracts, IDs, photos) to any contact under a new "Docs" tab — stored on-device, download or remove anytime (8 MB per file limit to keep things fast)
-
-All planned CRM features are now built. The only thing left on the original roadmap is wrapping this into a real native `.apk` (see below) — that's the natural next phase whenever you're ready.
+## What's next
+Multiple editable notes with a full activity timeline → QR codes + bulk share + Tags manager → Arabic (RTL) support & reports → then the native Android `.apk`.
 
 Fully offline after first load (installable as a real app icon).
-
-## Phone contacts integration
-- **Save a single contact to your phone**: open any contact → "Save to phone" — downloads a `.vcf` file (or opens your share sheet, if available). Opening that file lets your phone's Contacts app import it in one tap.
-- **Export all contacts to your phone at once**: More → "Export all as vCard (.vcf)" — a single file with every contact, importable in bulk by your phone's Contacts app.
-- **Import from your phone**: on Android Chrome, More → "Import from phone contacts" opens your real native contact list to pick from directly — no file needed. On browsers without that picker, the row is hidden and you can instead use "Import from a .vcf file" (works everywhere, and also handles a `.vcf` your phone itself exported).
-- **Full backup restore**: More → "Restore from backup" reads back a JSON file from "Export full backup" — useful when moving to a new phone. Restoring the same backup twice is safe; it won't create duplicates.
-
-A website genuinely can't silently write into your phone's native contacts (that would be a privacy hole any site could exploit) — the `.vcf` file is the standard, safe way every app does this, native or not; it just needs one extra tap to confirm the import on your end.
 
 ## A note on reminders
 Since this is a browser-based app (not yet the native APK), reminders only fire reliably **while the app is open** — a phone browser can't wake itself up in the background the way an installed native app can. If you turn on "Remind me" for an item, the app will ask for notification permission the first time, then try to notify you if you have the app open (or recently open) when the time arrives. The agenda itself will always show anything overdue the moment you open it, regardless of notifications. True background push reminders are one of the things the native APK will unlock.

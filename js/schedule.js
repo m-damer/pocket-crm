@@ -164,7 +164,8 @@ const Schedule = {
       .sort((a, b) => a.when.localeCompare(b.when))
       .map((e) => {
         const c = e.contactId ? Contacts.all.find((c) => c.id === e.contactId) : null;
-        return c && c.address ? c.address : null;
+        const addr = c ? primaryAddress(c) : null;
+        return addr ? addr.value : null;
       })
       .filter(Boolean);
 

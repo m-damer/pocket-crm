@@ -7,10 +7,22 @@ function contactToVCard(c) {
   const lines = ["BEGIN:VCARD", "VERSION:3.0"];
   lines.push(`N:${vcardEscape(c.lastName)};${vcardEscape(c.firstName)};;;`);
   lines.push(`FN:${vcardEscape(fullName(c))}`);
+  if (c.nickname) lines.push(`NICKNAME:${vcardEscape(c.nickname)}`);
+  if (c.jobTitle) lines.push(`TITLE:${vcardEscape(c.jobTitle)}`);
   if (c.company) lines.push(`ORG:${vcardEscape(c.company)}`);
-  if (c.phone) lines.push(`TEL;TYPE=CELL:${vcardEscape(c.phone)}`);
-  if (c.email) lines.push(`EMAIL:${vcardEscape(c.email)}`);
-  if (c.address) lines.push(`ADR;TYPE=HOME:;;${vcardEscape(c.address)};;;;`);
+  (c.phones || []).forEach((p) => {
+    const type = p.label === "mobile" ? "CELL" : (p.label || "OTHER").toUpperCase();
+    lines.push(`TEL;TYPE=${type}:${vcardEscape(p.value)}`);
+  });
+  (c.emails || []).forEach((e) => {
+    lines.push(`EMAIL;TYPE=${(e.label || "OTHER").toUpperCase()}:${vcardEscape(e.value)}`);
+  });
+  (c.addresses || []).forEach((a) => {
+    lines.push(`ADR;TYPE=${(a.label || "OTHER").toUpperCase()}:;;${vcardEscape(a.value)};;;;`);
+    if (a.mapsLink) lines.push(`URL;TYPE=${(a.label || "OTHER").toUpperCase()}-MAP:${vcardEscape(a.mapsLink)}`);
+  });
+  if (c.website) lines.push(`URL:${vcardEscape(c.website)}`);
+  if (c.birthday) lines.push(`BDAY:${c.birthday.replace(/-/g, "")}`);
   if (c.notes) lines.push(`NOTE:${vcardEscape(c.notes)}`);
   lines.push("END:VCARD");
   return lines.join("\r\n");
@@ -97,20 +109,45 @@ function parseVCards(text) {
       const sp = full.indexOf(" ");
       current.firstName = sp === -1 ? full : full.slice(0, sp);
       current.lastName = sp === -1 ? "" : full.slice(sp + 1);
+    } else if (key === "NICKNAME") {
+      current.nickname = vcardUnescape(value.split(",")[0]);
+    } else if (key === "TITLE") {
+      current.jobTitle = vcardUnescape(value);
     } else if (key === "ORG") {
       current.company = vcardUnescape(value.split(";")[0]);
+    } else if (key === "BDAY") {
+      const digits = value.replace(/[^\d]/g, "");
+      if (digits.length === 8) current.birthday = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
     } else if (key === "TEL") {
-      if (!current.phone) current.phone = vcardUnescape(value);
+      current.phones = current.phones || [];
+      current.phones.push({ label: vcardTypeToLabel(rawKey), value: vcardUnescape(value) });
     } else if (key === "EMAIL") {
-      if (!current.email) current.email = vcardUnescape(value);
+      current.emails = current.emails || [];
+      current.emails.push({ label: vcardTypeToLabel(rawKey), value: vcardUnescape(value) });
     } else if (key === "ADR") {
       const parts = value.split(";").map(vcardUnescape).filter(Boolean);
-      if (!current.address) current.address = parts.join(", ");
+      current.addresses = current.addresses || [];
+      current.addresses.push({ label: vcardTypeToLabel(rawKey), value: parts.join(", "), mapsLink: "" });
+    } else if (key === "URL") {
+      if (/-MAP$/i.test(rawKey) && current.addresses && current.addresses.length) {
+        current.addresses[current.addresses.length - 1].mapsLink = vcardUnescape(value);
+      } else if (!current.website) {
+        current.website = vcardUnescape(value);
+      }
     } else if (key === "NOTE") {
       current.notes = vcardUnescape(value);
     }
   }
   return cards.filter((c) => c.firstName || c.lastName || c.company);
+}
+
+function vcardTypeToLabel(rawKey) {
+  const m = /TYPE=([^;:]+)/i.exec(rawKey);
+  const t = (m ? m[1] : "").toUpperCase();
+  if (t.includes("CELL")) return "mobile";
+  if (t.includes("HOME")) return "home";
+  if (t.includes("WORK")) return "work";
+  return "other";
 }
 
 async function importVCardFile(file) {
@@ -149,8 +186,8 @@ async function importFromPhoneContacts() {
       await DB.add({
         firstName,
         lastName,
-        phone: (p.tel && p.tel[0]) || "",
-        email: (p.email && p.email[0]) || "",
+        phones: (p.tel || []).map((v) => ({ label: "mobile", value: v })),
+        emails: (p.email || []).map((v) => ({ label: "other", value: v })),
         category: "lead",
       });
       count++;
@@ -178,7 +215,5 @@ async function importBackupFile(file) {
   const counts = await DB.importBackup(data);
   await Contacts.refresh();
   await Schedule.refresh();
-  await InvoicesUI.refresh();
-  await loadBusinessProfileForm();
-  showToast(`Restored ${counts.contacts} contacts, ${counts.events} schedule items, ${counts.invoices} invoices`);
+  showToast(`Restored ${counts.contacts} contacts, ${counts.events} schedule items`);
 }
