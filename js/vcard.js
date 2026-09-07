@@ -21,7 +21,9 @@ function contactToVCard(c) {
     lines.push(`ADR;TYPE=${(a.label || "OTHER").toUpperCase()}:;;${vcardEscape(a.value)};;;;`);
     if (a.mapsLink) lines.push(`URL;TYPE=${(a.label || "OTHER").toUpperCase()}-MAP:${vcardEscape(a.mapsLink)}`);
   });
-  if (c.website) lines.push(`URL:${vcardEscape(c.website)}`);
+  (c.websites || []).forEach((w) => {
+    lines.push(`URL;TYPE=${(w.label || "OTHER").toUpperCase()}:${vcardEscape(w.value)}`);
+  });
   if (c.birthday) lines.push(`BDAY:${c.birthday.replace(/-/g, "")}`);
   if (c.notes) lines.push(`NOTE:${vcardEscape(c.notes)}`);
   lines.push("END:VCARD");
@@ -131,8 +133,9 @@ function parseVCards(text) {
     } else if (key === "URL") {
       if (/-MAP$/i.test(rawKey) && current.addresses && current.addresses.length) {
         current.addresses[current.addresses.length - 1].mapsLink = vcardUnescape(value);
-      } else if (!current.website) {
-        current.website = vcardUnescape(value);
+      } else {
+        current.websites = current.websites || [];
+        current.websites.push({ label: "other", value: vcardUnescape(value) });
       }
     } else if (key === "NOTE") {
       current.notes = vcardUnescape(value);

@@ -98,8 +98,9 @@ const FIELD_SETTING_LABELS = {
   phones: "Phone numbers",
   emails: "Emails",
   addresses: "Addresses",
-  website: "Website",
+  websites: "Websites",
   birthday: "Birthday",
+  customFields: "Custom fields",
 };
 
 async function renderFieldSettingsList() {

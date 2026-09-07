@@ -4,14 +4,16 @@ const CAT_META = {
   lost: { label: "Lost", color: "#8A93A3" },
 };
 const LABEL_META = { mobile: "Mobile", home: "Home", work: "Work", other: "Other" };
+const WEBSITE_LABEL_META = { personal: "Personal", work: "Work", portfolio: "Portfolio", other: "Other" };
 const FIELD_GROUP_META = {
   nickname: "Nickname",
   companyJobTitle: "Company & job title",
   phones: "Phone numbers",
   emails: "Emails",
   addresses: "Addresses",
-  website: "Website",
+  websites: "Websites",
   birthday: "Birthday",
+  customFields: "Custom fields",
 };
 
 function initials(c) {
@@ -70,6 +72,7 @@ const Contacts = {
         c.firstName, c.lastName, c.nickname, c.company, c.jobTitle,
         ...(c.phones || []).map((p) => p.value),
         ...(c.emails || []).map((e) => e.value),
+        ...(c.websites || []).map((w) => w.value),
       ].filter(Boolean);
       return haystack.some((v) => v.toLowerCase().includes(q));
     });
@@ -152,10 +155,16 @@ function renderFieldGroupHTML(key, c) {
           ${a.mapsLink ? `<a href="${escapeHTML(a.mapsLink)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);font-weight:600">Open map link →</a>` : ""}
         </div>
       `).join("");
-    case "website":
-      return c.website ? `<div class="field-row"><p class="label">Website</p><p class="value"><a href="${/^https?:\/\//.test(c.website) ? c.website : "https://" + c.website}" target="_blank" rel="noopener" style="color:var(--blue)">${escapeHTML(c.website)}</a></p></div>` : "";
+    case "websites":
+      return (c.websites || []).map((w) => `
+        <div class="field-row"><p class="label">${WEBSITE_LABEL_META[w.label] || "Website"}</p><p class="value"><a href="${/^https?:\/\//.test(w.value) ? w.value : "https://" + w.value}" target="_blank" rel="noopener" style="color:var(--blue)">${escapeHTML(w.value)}</a></p></div>
+      `).join("");
     case "birthday":
       return c.birthday ? `<div class="field-row"><p class="label">Birthday</p><p class="value">${fmtBirthday(c.birthday)}</p></div>` : "";
+    case "customFields":
+      return (c.customFields || []).filter((f) => f.value).map((f) => `
+        <div class="field-row"><p class="label">${escapeHTML(f.label || "Custom")}</p><p class="value">${escapeHTML(f.value)}</p></div>
+      `).join("");
     default:
       return "";
   }
@@ -337,23 +346,42 @@ function syncMultiFieldFromDOM(containerId, items, isAddress) {
   });
 }
 
+function multiFieldPlaceholder(kind) {
+  if (kind === "addresses") return "Address";
+  if (kind === "emails") return "Email";
+  if (kind === "websites") return "example.com";
+  return "Phone number";
+}
+function multiFieldAddLabel(kind) {
+  if (kind === "addresses") return "address";
+  if (kind === "emails") return "email";
+  if (kind === "websites") return "website";
+  return "phone";
+}
+function multiFieldDefaultRow(kind) {
+  if (kind === "addresses") return { label: "home", value: "", mapsLink: "" };
+  if (kind === "websites") return { label: "other", value: "" };
+  return { label: "mobile", value: "" };
+}
+
 function renderMultiFieldEditor(containerId, items, kind) {
   const wrap = document.getElementById(containerId);
   const isAddress = kind === "addresses";
+  const labelMeta = kind === "websites" ? WEBSITE_LABEL_META : LABEL_META;
   wrap.innerHTML = items.map((it, idx) => `
     <div class="item-row multi-field-row" data-idx="${idx}">
       <select class="mf-label">
-        ${Object.entries(LABEL_META).map(([k, v]) => `<option value="${k}" ${it.label === k ? "selected" : ""}>${v}</option>`).join("")}
+        ${Object.entries(labelMeta).map(([k, v]) => `<option value="${k}" ${it.label === k ? "selected" : ""}>${v}</option>`).join("")}
       </select>
       <div class="mf-value-col">
-        <input type="text" class="mf-value" placeholder="${isAddress ? "Address" : kind === "emails" ? "Email" : "Phone number"}" value="${escapeHTML(it.value || "")}" />
+        <input type="text" class="mf-value" placeholder="${multiFieldPlaceholder(kind)}" value="${escapeHTML(it.value || "")}" />
         ${isAddress ? `<input type="text" class="mf-maps" placeholder="Google Maps link (optional)" value="${escapeHTML(it.mapsLink || "")}" />` : ""}
       </div>
       <button type="button" class="it-remove" title="Remove">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
       </button>
     </div>
-  `).join("") + `<button type="button" class="btn-add-item" data-add="${containerId}">+ Add ${isAddress ? "address" : kind === "emails" ? "email" : "phone"}</button>`;
+  `).join("") + `<button type="button" class="btn-add-item" data-add="${containerId}">+ Add ${multiFieldAddLabel(kind)}</button>`;
 
   wrap.querySelectorAll(".it-remove").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -365,9 +393,60 @@ function renderMultiFieldEditor(containerId, items, kind) {
   });
   wrap.querySelector("[data-add]").addEventListener("click", () => {
     syncMultiFieldFromDOM(containerId, items, isAddress); // preserve what's typed before adding a new row
-    items.push(isAddress ? { label: "home", value: "", mapsLink: "" } : { label: "mobile", value: "" });
+    items.push(multiFieldDefaultRow(kind));
     renderMultiFieldEditor(containerId, items, kind);
   });
+}
+
+// ---------------- Custom fields editor (user-defined label + value) ----------------
+function syncCustomFieldsFromDOM(containerId, items) {
+  const rows = document.querySelectorAll(`#${containerId} .custom-field-row`);
+  rows.forEach((row, idx) => {
+    if (!items[idx]) return;
+    items[idx].label = row.querySelector(".cf-label").value;
+    items[idx].value = row.querySelector(".cf-value").value;
+  });
+}
+
+function renderCustomFieldsEditor(containerId, items) {
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = items.map((it, idx) => `
+    <div class="item-row custom-field-row" data-idx="${idx}">
+      <div class="mf-value-col">
+        <input type="text" class="mf-value cf-label" placeholder="Field name (e.g. Instagram)" value="${escapeHTML(it.label || "")}" />
+        <input type="text" class="mf-value cf-value" placeholder="Value" value="${escapeHTML(it.value || "")}" />
+      </div>
+      <button type="button" class="it-remove" title="Remove">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+  `).join("") + `<button type="button" class="btn-add-item" data-add="${containerId}">+ Add custom field</button>`;
+
+  wrap.querySelectorAll(".it-remove").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      syncCustomFieldsFromDOM(containerId, items);
+      const idx = Number(btn.closest(".custom-field-row").dataset.idx);
+      items.splice(idx, 1);
+      renderCustomFieldsEditor(containerId, items);
+    });
+  });
+  wrap.querySelector("[data-add]").addEventListener("click", () => {
+    syncCustomFieldsFromDOM(containerId, items);
+    items.push({ label: "", value: "" });
+    renderCustomFieldsEditor(containerId, items);
+  });
+}
+
+function readCustomFieldsEditor(containerId) {
+  const rows = document.querySelectorAll(`#${containerId} .custom-field-row`);
+  const out = [];
+  rows.forEach((row) => {
+    const label = row.querySelector(".cf-label").value.trim();
+    const value = row.querySelector(".cf-value").value.trim();
+    if (!label && !value) return;
+    out.push({ id: uid("cf"), label, value });
+  });
+  return out;
 }
 
 function readMultiFieldEditor(containerId, isAddress) {
@@ -390,6 +469,8 @@ let formCategory = "customer";
 let formPhones = [];
 let formEmails = [];
 let formAddresses = [];
+let formWebsites = [];
+let formCustomFields = [];
 let formPhotoDataUrl = "";
 
 async function openForm(id) {
@@ -398,13 +479,15 @@ async function openForm(id) {
   formPhotoDataUrl = "";
   document.getElementById("form-title").textContent = id ? "Edit contact" : "New contact";
 
-  ["first", "last", "nickname", "company", "jobtitle", "website", "birthday", "tags", "notes"].forEach((f) => {
+  ["first", "last", "nickname", "company", "jobtitle", "birthday", "tags", "notes"].forEach((f) => {
     const el = document.getElementById("f-" + f);
     if (el) el.value = "";
   });
   formPhones = [{ label: "mobile", value: "" }];
   formEmails = [{ label: "other", value: "" }];
   formAddresses = [];
+  formWebsites = [];
+  formCustomFields = [];
   updatePhotoPreview();
 
   if (id) {
@@ -415,13 +498,14 @@ async function openForm(id) {
       document.getElementById("f-nickname").value = c.nickname || "";
       document.getElementById("f-company").value = c.company || "";
       document.getElementById("f-jobtitle").value = c.jobTitle || "";
-      document.getElementById("f-website").value = c.website || "";
       document.getElementById("f-birthday").value = c.birthday || "";
       document.getElementById("f-tags").value = (c.tags || []).join(", ");
       document.getElementById("f-notes").value = c.notes || "";
       formPhones = (c.phones || []).map((p) => ({ ...p }));
       formEmails = (c.emails || []).map((e) => ({ ...e }));
       formAddresses = (c.addresses || []).map((a) => ({ ...a }));
+      formWebsites = (c.websites || []).map((w) => ({ ...w }));
+      formCustomFields = (c.customFields || []).map((f) => ({ ...f }));
       formPhotoDataUrl = c.photoDataUrl || "";
       formCategory = c.category || "customer";
     }
@@ -433,6 +517,8 @@ async function openForm(id) {
   renderMultiFieldEditor("f-phones", formPhones, "phones");
   renderMultiFieldEditor("f-emails", formEmails, "emails");
   renderMultiFieldEditor("f-addresses", formAddresses, "addresses");
+  renderMultiFieldEditor("f-websites", formWebsites, "websites");
+  renderCustomFieldsEditor("f-customfields", formCustomFields);
   updatePhotoPreview();
   await applyFieldVisibilityToForm();
   showScreen("screen-form");
@@ -474,11 +560,12 @@ async function saveForm() {
     nickname: document.getElementById("f-nickname").value.trim(),
     company: document.getElementById("f-company").value.trim(),
     jobTitle: document.getElementById("f-jobtitle").value.trim(),
-    website: document.getElementById("f-website").value.trim(),
     birthday: document.getElementById("f-birthday").value,
     phones: readMultiFieldEditor("f-phones", false),
     emails: readMultiFieldEditor("f-emails", false),
     addresses: readMultiFieldEditor("f-addresses", true),
+    websites: readMultiFieldEditor("f-websites", false),
+    customFields: readCustomFieldsEditor("f-customfields"),
     photoDataUrl: formPhotoDataUrl,
     tags: document.getElementById("f-tags").value
       .split(",").map((t) => t.trim()).filter(Boolean),

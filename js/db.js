@@ -53,7 +53,8 @@ function uid(prefix = "c") {
 // new multi-value shape, in place on read. Persists the upgrade once so it
 // only has to run a single time per contact.
 function needsContactMigration(c) {
-  return c.phones === undefined || c.emails === undefined || c.addresses === undefined;
+  return c.phones === undefined || c.emails === undefined || c.addresses === undefined ||
+    c.websites === undefined || c.customFields === undefined;
 }
 
 function migrateContactShape(c) {
@@ -68,14 +69,20 @@ function migrateContactShape(c) {
   if (migrated.addresses === undefined) {
     migrated.addresses = c.address ? [{ id: uid("a"), label: "other", value: c.address, mapsLink: "" }] : [];
   }
+  if (migrated.websites === undefined) {
+    // Older builds stored a single `website` string — carry it over as the
+    // first entry of the new multi-value list, then drop the old field.
+    migrated.websites = c.website ? [{ id: uid("w"), label: "other", value: c.website }] : [];
+  }
+  if (migrated.customFields === undefined) migrated.customFields = [];
   if (migrated.nickname === undefined) migrated.nickname = "";
   if (migrated.jobTitle === undefined) migrated.jobTitle = "";
-  if (migrated.website === undefined) migrated.website = "";
   if (migrated.birthday === undefined) migrated.birthday = "";
   if (migrated.photoDataUrl === undefined) migrated.photoDataUrl = "";
   delete migrated.phone;
   delete migrated.email;
   delete migrated.address;
+  delete migrated.website;
   return migrated;
 }
 
@@ -145,7 +152,8 @@ const DB = {
       phones: [], // {id, label: mobile|home|work|other, value}
       emails: [], // {id, label, value}
       addresses: [], // {id, label, value, mapsLink}
-      website: "",
+      websites: [], // {id, label: personal|work|portfolio|other, value}
+      customFields: [], // {id, label, value} — user-defined
       birthday: "", // YYYY-MM-DD
       category: "lead", // customer | lead | lost
       tags: [],
@@ -349,8 +357,9 @@ const DEFAULT_CONTACT_FIELD_CONFIG = [
   { key: "phones", visible: true },
   { key: "emails", visible: true },
   { key: "addresses", visible: true },
-  { key: "website", visible: true },
+  { key: "websites", visible: true },
   { key: "birthday", visible: true },
+  { key: "customFields", visible: true },
 ];
 
 const Settings = {
