@@ -79,11 +79,13 @@ document.querySelectorAll("#filter-chips .chip").forEach((chip) => {
 // ---------------- Wiring: bulk select + share ----------------
 function updateSelectBar() {
   const count = Contacts.selectedIds.size;
-  document.getElementById("contacts-header-title").textContent = Contacts.selectMode ? `${count} selected` : "Contacts";
+  document.getElementById("contacts-header-title").textContent = Contacts.selectMode
+    ? t("contacts_selected_count", { n: count })
+    : t("contacts_title");
   document.getElementById("btn-export").hidden = Contacts.selectMode;
   document.getElementById("btn-select-share").hidden = !Contacts.selectMode;
   const selectBtn = document.getElementById("btn-select-mode");
-  selectBtn.title = Contacts.selectMode ? "Cancel selection" : "Select contacts";
+  selectBtn.title = Contacts.selectMode ? t("btn_cancel_select_title") : t("btn_select_title");
   selectBtn.innerHTML = Contacts.selectMode
     ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/></svg>`;
@@ -100,7 +102,7 @@ document.getElementById("btn-select-mode").addEventListener("click", () => {
 async function shareSelectedContacts() {
   const ids = Array.from(Contacts.selectedIds);
   if (ids.length === 0) {
-    showToast("Select at least one contact");
+    showToast(t("toast_select_one_contact"));
     return;
   }
   openFieldPicker(async (selectedKeys) => {
@@ -123,7 +125,7 @@ async function shareSelectedContacts() {
     }
     if (!shared) {
       downloadFile(vcard, filename, "text/vcard");
-      showToast("Contact file downloaded");
+      showToast(t("toast_contact_file_downloaded"));
     }
     closeAllScreens();
     Contacts.exitSelectMode();
@@ -147,16 +149,22 @@ document.getElementById("btn-crop-save").addEventListener("click", savePhotoCrop
 wirePhotoCropEvents();
 
 // ---------------- Wiring: Contact form field settings ----------------
-const FIELD_SETTING_LABELS = {
-  nickname: "Nickname",
-  companyJobTitle: "Company & job title",
-  phones: "Phone numbers",
-  emails: "Emails",
-  addresses: "Addresses",
-  websites: "Websites",
-  birthday: "Birthday",
-  customFields: "Custom fields",
-};
+// Field labels are shared across the field-settings screen, the info tab,
+// and the contact form itself — see FIELD_GROUP_META in contacts.js, which
+// also reads from the same i18n keys, so the wording always stays in sync.
+function fieldSettingLabel(key) {
+  const keys = {
+    nickname: "field_nickname",
+    companyJobTitle: "field_company_job_title",
+    phones: "field_phones",
+    emails: "field_emails",
+    addresses: "field_addresses",
+    websites: "field_websites",
+    birthday: "field_birthday",
+    customFields: "field_custom_fields",
+  };
+  return keys[key] ? t(keys[key]) : key;
+}
 
 async function renderFieldSettingsList() {
   const settings = await Settings.get();
@@ -168,7 +176,7 @@ async function renderFieldSettingsList() {
         <button type="button" class="fs-arrow" data-dir="up" ${idx === 0 ? "disabled" : ""}>&#9650;</button>
         <button type="button" class="fs-arrow" data-dir="down" ${idx === config.length - 1 ? "disabled" : ""}>&#9660;</button>
       </div>
-      <span class="fs-label">${FIELD_SETTING_LABELS[f.key] || f.key}</span>
+      <span class="fs-label">${fieldSettingLabel(f.key)}</span>
       <input type="checkbox" class="fs-toggle-input" ${f.visible ? "checked" : ""} />
     </div>
   `).join("");
@@ -205,11 +213,11 @@ let tagEditorState = null; // null | { id: null|string, name, color }
 function tagEditorHTML(state) {
   return `
     <div class="tag-editor-card" id="tag-editor-card">
-      <input type="text" id="tag-editor-name" placeholder="Tag name" value="${escapeHTML(state.name)}" />
+      <input type="text" id="tag-editor-name" placeholder="${t("ph_tag_name")}" value="${escapeHTML(state.name)}" />
       <div class="tag-color-swatches" id="tag-editor-colors"></div>
       <div class="tag-editor-actions">
-        <button type="button" class="btn-secondary" id="tag-editor-cancel" style="padding:8px 14px">Cancel</button>
-        <button type="button" class="btn-primary" id="tag-editor-save" style="padding:8px 14px">${state.id ? "Save" : "Add tag"}</button>
+        <button type="button" class="btn-secondary" id="tag-editor-cancel" style="padding:8px 14px">${t("btn_cancel")}</button>
+        <button type="button" class="btn-primary" id="tag-editor-save" style="padding:8px 14px">${state.id ? t("tag_editor_save") : t("tag_editor_add")}</button>
       </div>
     </div>
   `;
@@ -222,18 +230,18 @@ async function renderTagsManageScreen() {
 
   const editorHTML = tagEditorState ? tagEditorHTML(tagEditorState) : "";
   const listHTML = tags.length === 0
-    ? `<p class="hint-text" style="margin:14px 4px">${tagEditorState ? "" : "No tags yet. Tap + to add one."}</p>`
-    : tags.map((t) => `
-        <div class="tag-manage-row" data-id="${t.id}">
-          <span class="tag-dot" style="background:${t.color}"></span>
+    ? `<p class="hint-text" style="margin:14px 4px">${tagEditorState ? "" : t("empty_no_tags")}</p>`
+    : tags.map((t2) => `
+        <div class="tag-manage-row" data-id="${t2.id}">
+          <span class="tag-dot" style="background:${t2.color}"></span>
           <div class="tag-manage-info">
-            <p class="t">${escapeHTML(t.name)}</p>
-            <p class="s">${counts[t.id] || 0} contact${(counts[t.id] || 0) === 1 ? "" : "s"}</p>
+            <p class="t">${escapeHTML(t2.name)}</p>
+            <p class="s">${I18N.plural(counts[t2.id] || 0, "contact_count", "contact_count_plural")}</p>
           </div>
-          <button type="button" class="icon-btn tag-edit-btn" style="color:var(--navy)" title="Edit" data-id="${t.id}">
+          <button type="button" class="icon-btn tag-edit-btn" style="color:var(--navy)" title="${t("tag_edit_title")}" data-id="${t2.id}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
           </button>
-          <button type="button" class="icon-btn tag-delete-btn" style="color:#B3261E" title="Delete" data-id="${t.id}">
+          <button type="button" class="icon-btn tag-delete-btn" style="color:#B3261E" title="${t("tag_delete_title")}" data-id="${t2.id}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
           </button>
         </div>
@@ -249,16 +257,16 @@ async function renderTagsManageScreen() {
     });
     document.getElementById("tag-editor-save").addEventListener("click", async () => {
       const name = document.getElementById("tag-editor-name").value.trim();
-      if (!name) { showToast("Enter a tag name"); return; }
+      if (!name) { showToast(t("toast_enter_tag_name")); return; }
       const color = document.getElementById("tag-editor-colors").dataset.selected;
-      const dupe = tags.find((t) => t.name.toLowerCase() === name.toLowerCase() && t.id !== tagEditorState.id);
-      if (dupe) { showToast("A tag with that name already exists"); return; }
+      const dupe = tags.find((tg) => tg.name.toLowerCase() === name.toLowerCase() && tg.id !== tagEditorState.id);
+      if (dupe) { showToast(t("toast_tag_exists")); return; }
       if (tagEditorState.id) {
         await Tags.update(tagEditorState.id, { name, color });
-        showToast("Tag updated");
+        showToast(t("toast_tag_updated"));
       } else {
         await Tags.add(name, color);
-        showToast("Tag added");
+        showToast(t("toast_tag_added"));
       }
       tagEditorState = null;
       await renderTagsManageScreen();
@@ -267,7 +275,7 @@ async function renderTagsManageScreen() {
 
   wrap.querySelectorAll(".tag-edit-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const tag = tags.find((t) => t.id === btn.dataset.id);
+      const tag = tags.find((tg) => tg.id === btn.dataset.id);
       if (!tag) return;
       tagEditorState = { id: tag.id, name: tag.name, color: tag.color };
       renderTagsManageScreen();
@@ -275,15 +283,15 @@ async function renderTagsManageScreen() {
   });
   wrap.querySelectorAll(".tag-delete-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const tag = tags.find((t) => t.id === btn.dataset.id);
+      const tag = tags.find((tg) => tg.id === btn.dataset.id);
       if (!tag) return;
       const count = counts[tag.id] || 0;
       const msg = count > 0
-        ? `Delete tag "${tag.name}"? It's used on ${count} contact${count === 1 ? "" : "s"} — it will be removed from all of them. This can't be undone.`
-        : `Delete tag "${tag.name}"? This can't be undone.`;
+        ? t("confirm_delete_tag_used", { name: tag.name, count: I18N.plural(count, "contact_count", "contact_count_plural") })
+        : t("confirm_delete_tag", { name: tag.name });
       if (!confirm(msg)) return;
       await Tags.remove(tag.id);
-      showToast("Tag deleted");
+      showToast(t("toast_tag_deleted"));
       await Contacts.refresh();
       await renderTagsManageScreen();
     });
@@ -333,7 +341,7 @@ function downloadExport(json) {
 async function exportData() {
   const json = await DB.exportJSON();
   downloadExport(json);
-  showToast("Backup downloaded");
+  showToast(t("toast_backup_downloaded"));
 }
 document.getElementById("btn-export").addEventListener("click", exportData);
 document.getElementById("row-export").addEventListener("click", exportData);
@@ -432,8 +440,49 @@ document.querySelectorAll("#schedule-chips .chip").forEach((chip) => {
 });
 document.getElementById("btn-route-today").addEventListener("click", () => Schedule.routeToday());
 
+// ---------------- Wiring: Reports ----------------
+document.getElementById("row-reports").addEventListener("click", openReports);
+document.getElementById("btn-reports-back").addEventListener("click", closeAllScreens);
+document.querySelectorAll("#screen-reports .tab-btn").forEach((b) => {
+  b.addEventListener("click", async () => {
+    setReportsTab(b.dataset.rtab);
+    await refreshOpenReportTab();
+  });
+});
+document.getElementById("report-from").addEventListener("change", renderReportActivity);
+document.getElementById("report-to").addEventListener("change", renderReportActivity);
+document.getElementById("btn-summary-export-csv").addEventListener("click", exportSummaryCSV);
+document.getElementById("btn-summary-export-pdf").addEventListener("click", exportSummaryPDF);
+document.getElementById("btn-activity-export-csv").addEventListener("click", exportActivityCSV);
+document.getElementById("btn-activity-export-pdf").addEventListener("click", exportActivityPDF);
+document.getElementById("btn-tags-export-csv").addEventListener("click", exportTagsCSV);
+document.getElementById("btn-tags-export-pdf").addEventListener("click", exportTagsPDF);
+
+// ---------------- Wiring: Language toggle ----------------
+document.querySelectorAll("#lang-toggle button").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    if (btn.dataset.lang === I18N.lang) return;
+    document.querySelectorAll("#lang-toggle button").forEach((b) => b.classList.toggle("active", b === btn));
+    await I18N.setLang(btn.dataset.lang);
+  });
+});
+I18N.onChange(async () => {
+  // Re-sync anything already rendered dynamically in the previous language.
+  document.querySelectorAll("#lang-toggle button").forEach((b) =>
+    b.classList.toggle("active", b.dataset.lang === I18N.lang)
+  );
+  closeAllScreens();
+  await Contacts.refresh();
+  await Schedule.refresh();
+  updateSelectBar();
+});
+
 // ---------------- Boot ----------------
 (async function boot() {
+  await I18N.init();
+  document.querySelectorAll("#lang-toggle button").forEach((b) =>
+    b.classList.toggle("active", b.dataset.lang === I18N.lang)
+  );
   await Contacts.refresh();
   await Schedule.refresh();
   Schedule.startReminderLoop();

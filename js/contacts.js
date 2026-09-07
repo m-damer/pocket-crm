@@ -1,20 +1,39 @@
 const CAT_META = {
-  customer: { label: "Customer", color: "#1F8A5F" },
-  lead: { label: "Lead", color: "#C97C1F" },
-  lost: { label: "Lost", color: "#8A93A3" },
+  customer: { color: "#1F8A5F" },
+  lead: { color: "#C97C1F" },
+  lost: { color: "#8A93A3" },
 };
-const LABEL_META = { mobile: "Mobile", home: "Home", work: "Work", other: "Other" };
-const WEBSITE_LABEL_META = { personal: "Personal", work: "Work", portfolio: "Portfolio", other: "Other" };
-const FIELD_GROUP_META = {
-  nickname: "Nickname",
-  companyJobTitle: "Company & job title",
-  phones: "Phone numbers",
-  emails: "Emails",
-  addresses: "Addresses",
-  websites: "Websites",
-  birthday: "Birthday",
-  customFields: "Custom fields",
-};
+function catLabel(cat) {
+  const keys = { customer: "cat_customer", lead: "cat_lead", lost: "cat_lost" };
+  return keys[cat] ? t(keys[cat]) : cat;
+}
+function phoneEmailLabel(labelKey) {
+  const keys = { mobile: "label_mobile", home: "label_home", work: "label_work", other: "label_other" };
+  return keys[labelKey] ? t(keys[labelKey]) : t("generic_phone");
+}
+function websiteLabelText(labelKey) {
+  const keys = { personal: "website_personal", work: "website_work", portfolio: "website_portfolio", other: "website_other" };
+  return keys[labelKey] ? t(keys[labelKey]) : t("website_other");
+}
+function phoneEmailLabelPairs() {
+  return [["mobile", t("label_mobile")], ["home", t("label_home")], ["work", t("label_work")], ["other", t("label_other")]];
+}
+function websiteLabelPairs() {
+  return [["personal", t("website_personal")], ["work", t("website_work")], ["portfolio", t("website_portfolio")], ["other", t("website_other")]];
+}
+function fieldGroupLabel(key) {
+  const keys = {
+    nickname: "field_nickname",
+    companyJobTitle: "field_company_job_title",
+    phones: "field_phones",
+    emails: "field_emails",
+    addresses: "field_addresses",
+    websites: "field_websites",
+    birthday: "field_birthday",
+    customFields: "field_custom_fields",
+  };
+  return keys[key] ? t(keys[key]) : key;
+}
 
 function initials(c) {
   const a = (c.firstName || "").trim()[0] || "";
@@ -23,7 +42,7 @@ function initials(c) {
 }
 
 function fullName(c) {
-  return [c.firstName, c.lastName].filter(Boolean).join(" ") || "Unnamed contact";
+  return [c.firstName, c.lastName].filter(Boolean).join(" ") || t("unnamed_contact");
 }
 
 function primaryPhone(c) { return (c.phones && c.phones[0] && c.phones[0].value) || ""; }
@@ -37,14 +56,14 @@ function waLink(phone) {
 
 function fmtDate(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) +
-    " · " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString(I18N.localeTag(), { day: "numeric", month: "short", year: "numeric" }) +
+    " · " + d.toLocaleTimeString(I18N.localeTag(), { hour: "2-digit", minute: "2-digit" });
 }
 
 function fmtBirthday(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
+  return new Date(y, m - 1, d).toLocaleDateString(I18N.localeTag(), { day: "numeric", month: "long", year: "numeric" });
 }
 
 function escapeHTML(s) {
@@ -87,8 +106,8 @@ const Contacts = {
       listEl.innerHTML = `
         <div class="empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>
-          <h3>${this.all.length === 0 ? "No contacts yet" : "No matches"}</h3>
-          <p>${this.all.length === 0 ? "Tap the + button to add your first contact." : "Try a different search or filter."}</p>
+          <h3>${this.all.length === 0 ? t("empty_no_contacts") : t("empty_no_matches")}</h3>
+          <p>${this.all.length === 0 ? t("empty_no_contacts_hint") : t("empty_no_matches_hint")}</p>
         </div>`;
       return;
     }
@@ -102,7 +121,7 @@ const Contacts = {
           <p class="contact-name">${escapeHTML(fullName(c))}</p>
           <p class="contact-sub">${escapeHTML(c.company || primaryPhone(c) || primaryEmail(c) || "")}</p>
         </div>
-        ${this.selectMode ? "" : `<span class="badge ${c.category}">${CAT_META[c.category].label}</span>`}
+        ${this.selectMode ? "" : `<span class="badge ${c.category}">${catLabel(c.category)}</span>`}
       </div>
     `).join("");
     listEl.querySelectorAll(".contact-row").forEach((row) => {
@@ -147,11 +166,11 @@ async function renderLinkedEvents(contactId) {
   if (events.length === 0) return "";
   return `
     <div class="field-list" style="margin-top:2px">
-      <p class="label" style="margin:6px 6px 6px">Upcoming</p>
+      <p class="label" style="margin:6px 6px 6px">${t("label_upcoming")}</p>
       ${events.map((e) => `
         <div class="field-row">
-          <p class="value">${escapeHTML(e.title || "Untitled")}</p>
-          <p class="label" style="margin-top:3px">${new Date(e.when).toLocaleDateString(undefined, { day: "numeric", month: "short" })} · ${new Date(e.when).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}</p>
+          <p class="value">${escapeHTML(e.title || t("untitled_event"))}</p>
+          <p class="label" style="margin-top:3px">${new Date(e.when).toLocaleDateString(I18N.localeTag(), { day: "numeric", month: "short" })} · ${new Date(e.when).toLocaleTimeString(I18N.localeTag(), { hour: "2-digit", minute: "2-digit" })}</p>
         </div>
       `).join("")}
     </div>
@@ -162,35 +181,35 @@ async function renderLinkedEvents(contactId) {
 function renderFieldGroupHTML(key, c) {
   switch (key) {
     case "nickname":
-      return c.nickname ? `<div class="field-row"><p class="label">Nickname</p><p class="value">${escapeHTML(c.nickname)}</p></div>` : "";
+      return c.nickname ? `<div class="field-row"><p class="label">${t("field_nickname")}</p><p class="value">${escapeHTML(c.nickname)}</p></div>` : "";
     case "companyJobTitle":
       if (!c.company && !c.jobTitle) return "";
-      return `<div class="field-row"><p class="label">Company</p><p class="value">${escapeHTML([c.jobTitle, c.company].filter(Boolean).join(" · ") || "—")}</p></div>`;
+      return `<div class="field-row"><p class="label">${t("field_company")}</p><p class="value">${escapeHTML([c.jobTitle, c.company].filter(Boolean).join(" · ") || "—")}</p></div>`;
     case "phones":
       return (c.phones || []).map((p) => `
-        <div class="field-row"><p class="label">${LABEL_META[p.label] || "Phone"}</p><p class="value">${escapeHTML(p.value)}</p></div>
+        <div class="field-row"><p class="label">${phoneEmailLabel(p.label)}</p><p class="value">${escapeHTML(p.value)}</p></div>
       `).join("");
     case "emails":
       return (c.emails || []).map((e) => `
-        <div class="field-row"><p class="label">${LABEL_META[e.label] || "Email"}</p><p class="value">${escapeHTML(e.value)}</p></div>
+        <div class="field-row"><p class="label">${phoneEmailLabel(e.label)}</p><p class="value">${escapeHTML(e.value)}</p></div>
       `).join("");
     case "addresses":
       return (c.addresses || []).map((a) => `
         <div class="field-row">
-          <p class="label">${LABEL_META[a.label] || "Address"}</p>
+          <p class="label">${phoneEmailLabel(a.label)}</p>
           <p class="value">${escapeHTML(a.value)}</p>
-          ${a.mapsLink ? `<a href="${escapeHTML(a.mapsLink)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);font-weight:600">Open map link →</a>` : ""}
+          ${a.mapsLink ? `<a href="${escapeHTML(a.mapsLink)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue);font-weight:600">${t("open_map_link")}</a>` : ""}
         </div>
       `).join("");
     case "websites":
       return (c.websites || []).map((w) => `
-        <div class="field-row"><p class="label">${WEBSITE_LABEL_META[w.label] || "Website"}</p><p class="value"><a href="${/^https?:\/\//.test(w.value) ? w.value : "https://" + w.value}" target="_blank" rel="noopener" style="color:var(--blue)">${escapeHTML(w.value)}</a></p></div>
+        <div class="field-row"><p class="label">${websiteLabelText(w.label)}</p><p class="value"><a href="${/^https?:\/\//.test(w.value) ? w.value : "https://" + w.value}" target="_blank" rel="noopener" style="color:var(--blue)">${escapeHTML(w.value)}</a></p></div>
       `).join("");
     case "birthday":
-      return c.birthday ? `<div class="field-row"><p class="label">Birthday</p><p class="value">${fmtBirthday(c.birthday)}</p></div>` : "";
+      return c.birthday ? `<div class="field-row"><p class="label">${t("field_birthday")}</p><p class="value">${fmtBirthday(c.birthday)}</p></div>` : "";
     case "customFields":
       return (c.customFields || []).filter((f) => f.value).map((f) => `
-        <div class="field-row"><p class="label">${escapeHTML(f.label || "Custom")}</p><p class="value">${escapeHTML(f.value)}</p></div>
+        <div class="field-row"><p class="label">${escapeHTML(f.label || t("field_custom_fallback"))}</p><p class="value">${escapeHTML(f.value)}</p></div>
       `).join("");
     default:
       return "";
@@ -208,13 +227,13 @@ async function renderInfoTab(c) {
 
   return `
     <div class="field-list">
-      <div class="field-row"><p class="label">Category</p><p class="value">${CAT_META[c.category].label}</p></div>
+      <div class="field-row"><p class="label">${t("label_category")}</p><p class="value">${catLabel(c.category)}</p></div>
       ${groupsHTML}
-      ${c.tags && c.tags.length ? `<div class="field-row"><p class="label">Tags</p><div class="tag-row">${c.tags.map((tid) => {
-        const t = allTags.find((x) => x.id === tid);
-        return t ? `<span class="tag" style="background:${t.color};color:#fff">${escapeHTML(t.name)}</span>` : "";
+      ${c.tags && c.tags.length ? `<div class="field-row"><p class="label">${t("label_tags")}</p><div class="tag-row">${c.tags.map((tid) => {
+        const t2 = allTags.find((x) => x.id === tid);
+        return t2 ? `<span class="tag" style="background:${t2.color};color:#fff">${escapeHTML(t2.name)}</span>` : "";
       }).join("")}</div></div>` : ""}
-      <div class="field-row"><p class="label">Added</p><p class="value">${fmtDate(c.createdAt)}</p></div>
+      <div class="field-row"><p class="label">${t("label_added")}</p><p class="value">${fmtDate(c.createdAt)}</p></div>
     </div>
     ${await renderLinkedEvents(c.id)}
   `;
@@ -239,7 +258,7 @@ async function renderDetail() {
       ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover;width:56px;height:56px" />`
       : `<div class="avatar" style="background:rgba(255,255,255,0.18)">${initials(c)}</div>`}
     <h2>${escapeHTML(fullName(c))}${c.nickname ? ` <span style="opacity:0.75;font-weight:400">"${escapeHTML(c.nickname)}"</span>` : ""}</h2>
-    <p>${escapeHTML(c.jobTitle && c.company ? `${c.jobTitle} · ${c.company}` : (c.company || CAT_META[c.category].label))}</p>
+    <p>${escapeHTML(c.jobTitle && c.company ? `${c.jobTitle} · ${c.company}` : (c.company || catLabel(c.category)))}</p>
   `;
 
   const phone = primaryPhone(c), email = primaryEmail(c), addr = primaryAddress(c);
@@ -247,23 +266,23 @@ async function renderDetail() {
   document.getElementById("detail-qa").innerHTML = `
     <a class="qa-btn ${phone ? "" : "disabled"}" href="${phone ? "tel:" + phone : "#"}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
-      Call
+      ${t("qa_call")}
     </a>
     <a class="qa-btn ${phone ? "" : "disabled"}" target="_blank" rel="noopener" href="${phone ? waLink(phone) : "#"}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 01-12.3 7.6L3 20l1-5.5A8.5 8.5 0 1121 11.5z"/><path d="M8.5 10.5c.3 2 2.7 4.3 4.7 4.6.8.1 1.6-.4 1.8-1.2"/></svg>
-      WhatsApp
+      ${t("qa_whatsapp")}
     </a>
     <a class="qa-btn ${email ? "" : "disabled"}" href="${email ? "mailto:" + email : "#"}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
-      Email
+      ${t("qa_email")}
     </a>
     <a class="qa-btn ${addr ? "" : "disabled"}" target="_blank" rel="noopener" href="${mapsHref}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-      Directions
+      ${t("qa_directions")}
     </a>
     <button type="button" class="qa-btn" id="btn-save-to-phone">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg>
-      Save to phone
+      ${t("qa_save_to_phone")}
     </button>
   `;
   document.getElementById("btn-save-to-phone").addEventListener("click", () => saveContactToPhone(c.id));
@@ -274,7 +293,7 @@ async function renderDetail() {
   document.getElementById("detail-tab-activity").innerHTML = `
     <div class="field-list">
       ${activities.length === 0
-        ? `<div class="empty-state" style="padding:32px 16px"><p>No activity logged yet.</p></div>`
+        ? `<div class="empty-state" style="padding:32px 16px"><p>${t("empty_no_activity")}</p></div>`
         : activities.map((a) => `
           <div class="activity-item">
             <p class="when">${fmtDate(a.date)}</p>
@@ -295,11 +314,11 @@ async function renderDocsTab(contactId) {
   wrap.innerHTML = `
     <div class="field-list">
       <label class="btn-add-item" style="display:block;text-align:center;margin-bottom:10px;cursor:pointer">
-        + Attach a file
+        ${t("btn_attach_file")}
         <input type="file" id="doc-file-input" style="display:none" />
       </label>
       ${docs.length === 0
-        ? `<div class="empty-state" style="padding:24px 16px"><p>No documents attached yet.</p></div>`
+        ? `<div class="empty-state" style="padding:24px 16px"><p>${t("empty_no_docs")}</p></div>`
         : docs.map((d) => `
           <div class="doc-row" data-id="${d.id}">
             <div class="doc-icon">${(d.name.split(".").pop() || "?").slice(0, 4).toUpperCase()}</div>
@@ -307,10 +326,10 @@ async function renderDocsTab(contactId) {
               <p class="contact-name">${escapeHTML(d.name)}</p>
               <p class="contact-sub">${(d.size / 1024).toFixed(0)} KB · ${fmtDate(d.createdAt)}</p>
             </div>
-            <a class="icon-btn doc-download" style="color:var(--navy)" href="${d.dataUrl}" download="${escapeHTML(d.name)}" title="Download">
+            <a class="icon-btn doc-download" style="color:var(--navy)" href="${d.dataUrl}" download="${escapeHTML(d.name)}" title="${t("doc_download_title")}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
             </a>
-            <button class="icon-btn doc-remove" style="color:#B3261E" data-remove="${d.id}" title="Remove">
+            <button class="icon-btn doc-remove" style="color:#B3261E" data-remove="${d.id}" title="${t("doc_remove_title")}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
             </button>
           </div>
@@ -322,13 +341,13 @@ async function renderDocsTab(contactId) {
     const file = e.target.files[0];
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
-      showToast("File too large (max 8 MB)");
+      showToast(t("toast_file_too_large"));
       return;
     }
     const reader = new FileReader();
     reader.onload = async () => {
       await Documents.add({ contactId, name: file.name, type: file.type, size: file.size, dataUrl: reader.result });
-      showToast("File attached");
+      showToast(t("toast_file_attached"));
       await renderDocsTab(contactId);
     };
     reader.readAsDataURL(file);
@@ -336,7 +355,7 @@ async function renderDocsTab(contactId) {
 
   wrap.querySelectorAll("[data-remove]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!confirm("Remove this file?")) return;
+      if (!confirm(t("confirm_remove_file"))) return;
       await Documents.remove(btn.dataset.remove);
       await renderDocsTab(contactId);
     });
@@ -353,18 +372,18 @@ function fmtDuration(sec) {
 
 function renderNoteCardHTML(n) {
   const isCall = n.kind === "call";
-  const kindLabel = isCall ? (n.callMedia === "voice" ? "Call · Voice" : "Call · Text") : "Note";
+  const kindLabel = isCall ? (n.callMedia === "voice" ? t("note_kind_call_voice") : t("note_kind_call_text")) : t("note_kind_note");
   const preview = isCall && n.callMedia === "voice"
-    ? `<p class="value" style="color:var(--text-muted)">🎙 ${fmtDuration(n.audioDurationSec)} recording</p>`
+    ? `<p class="value" style="color:var(--text-muted)">🎙 ${fmtDuration(n.audioDurationSec)} ${t("note_recording_suffix")}</p>`
     : (n.text ? `<p class="value" style="white-space:pre-wrap">${escapeHTML(n.text.length > 160 ? n.text.slice(0, 160) + "…" : n.text)}</p>` : "");
   return `
     <div class="field-row note-card" data-id="${n.id}">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-        <p class="label" style="margin:0">${escapeHTML(n.title || (isCall ? "Call note" : "Note"))}</p>
+        <p class="label" style="margin:0">${escapeHTML(n.title || (isCall ? t("note_title_fallback_call") : t("note_title_fallback_note")))}</p>
         <span class="note-kind-badge">${kindLabel}</span>
       </div>
       ${preview}
-      <p class="label" style="margin-top:6px">${fmtDate(n.updatedAt)}${n.updatedAt !== n.createdAt ? " · edited" : ""}</p>
+      <p class="label" style="margin-top:6px">${fmtDate(n.updatedAt)}${n.updatedAt !== n.createdAt ? t("note_edited_suffix") : ""}</p>
     </div>
   `;
 }
@@ -375,11 +394,11 @@ async function renderNotesTab(contactId) {
   const wrap = document.getElementById("detail-tab-notes");
   wrap.innerHTML = `
     <div style="padding:4px 16px 0">
-      <button type="button" class="btn-secondary" id="btn-add-note" style="padding:9px 16px;width:100%">+ Add note</button>
+      <button type="button" class="btn-secondary" id="btn-add-note" style="padding:9px 16px;width:100%">${t("btn_add_note")}</button>
     </div>
     <div class="field-list" style="margin-top:10px">
       ${notes.length === 0
-        ? `<div class="empty-state" style="padding:24px 16px"><p>No notes yet. Write one, or log a call — text or a short voice recording.</p></div>`
+        ? `<div class="empty-state" style="padding:24px 16px"><p>${t("empty_no_notes")}</p></div>`
         : notes.map((n) => renderNoteCardHTML(n)).join("")}
     </div>
   `;
@@ -427,7 +446,7 @@ async function openNoteForm(contactId, noteId) {
       document.getElementById("note-text").value = n.text || "";
     }
   }
-  document.getElementById("note-form-title").textContent = noteId ? "Edit note" : "New note";
+  document.getElementById("note-form-title").textContent = noteId ? t("note_form_title_edit") : t("note_form_title_new");
   setNoteKind(noteFormKind);
   setNoteCallMedia(noteFormCallMedia);
   showScreen("screen-note-form");
@@ -468,8 +487,8 @@ function renderVoiceWidget() {
   if (noteFormAudioDataUrl) {
     wrap.innerHTML = `
       <audio controls src="${noteFormAudioDataUrl}" style="width:100%"></audio>
-      <p class="hint-text" style="margin:6px 0 10px">${fmtDuration(noteFormAudioDurationSec)} recording</p>
-      <button type="button" class="btn-secondary" id="btn-rerecord" style="padding:9px 16px">Re-record</button>
+      <p class="hint-text" style="margin:6px 0 10px">${fmtDuration(noteFormAudioDurationSec)} ${t("note_recording_suffix")}</p>
+      <button type="button" class="btn-secondary" id="btn-rerecord" style="padding:9px 16px">${t("btn_rerecord")}</button>
     `;
     document.getElementById("btn-rerecord").addEventListener("click", () => {
       clearRecordedAudio();
@@ -478,11 +497,11 @@ function renderVoiceWidget() {
   } else {
     wrap.innerHTML = `
       <div class="record-widget">
-        <button type="button" class="btn-secondary" id="btn-start-record" style="padding:9px 16px">● Record</button>
+        <button type="button" class="btn-secondary" id="btn-start-record" style="padding:9px 16px">${t("btn_record")}</button>
         <span class="record-timer" id="record-timer" hidden>0:00</span>
-        <button type="button" class="btn-danger" id="btn-stop-record" style="padding:9px 16px;display:none">■ Stop</button>
+        <button type="button" class="btn-danger" id="btn-stop-record" style="padding:9px 16px;display:none">${t("btn_stop_record")}</button>
       </div>
-      <p class="hint-text" style="margin-top:8px">Max length 5:00 — recording stops automatically.</p>
+      <p class="hint-text" style="margin-top:8px">${t("hint_max_length")}</p>
     `;
     document.getElementById("btn-start-record").addEventListener("click", startVoiceRecording);
     document.getElementById("btn-stop-record").addEventListener("click", stopVoiceRecording);
@@ -491,20 +510,20 @@ function renderVoiceWidget() {
 
 async function startVoiceRecording() {
   if (!("MediaRecorder" in window) || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    showToast("Voice recording isn't supported on this browser");
+    showToast(t("toast_voice_not_supported"));
     return;
   }
   try {
     recorderStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (e) {
-    showToast("Microphone permission was denied");
+    showToast(t("toast_mic_denied"));
     return;
   }
   recordedChunks = [];
   try {
     mediaRecorder = new MediaRecorder(recorderStream);
   } catch (e) {
-    showToast("Couldn't start recording on this browser");
+    showToast(t("toast_record_not_supported"));
     return;
   }
   mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
@@ -519,10 +538,10 @@ async function startVoiceRecording() {
   if (timerEl) timerEl.hidden = false;
   recordTimerInterval = setInterval(() => {
     const elapsed = (Date.now() - recordStartTime) / 1000;
-    const t = document.getElementById("record-timer");
-    if (t) t.textContent = fmtDuration(elapsed);
+    const timerNode = document.getElementById("record-timer");
+    if (timerNode) timerNode.textContent = fmtDuration(elapsed);
     if (elapsed >= MAX_CALL_NOTE_SECONDS) {
-      showToast("Max length reached (5:00)");
+      showToast(t("toast_max_length_reached"));
       stopVoiceRecording();
     }
   }, 250);
@@ -575,11 +594,11 @@ async function saveNoteForm() {
   const isVoiceCall = noteFormKind === "call" && noteFormCallMedia === "voice";
 
   if (isVoiceCall && !noteFormAudioDataUrl) {
-    showToast("Record a voice note, or switch to Text");
+    showToast(t("toast_record_a_voice_note"));
     return;
   }
   if (!isVoiceCall && !title && !text.trim()) {
-    showToast("Add a title or some text");
+    showToast(t("toast_add_title_or_text"));
     return;
   }
 
@@ -594,10 +613,10 @@ async function saveNoteForm() {
 
   if (noteFormEditingId) {
     await ContactNotes.update(noteFormContactId, noteFormEditingId, patch);
-    showToast("Note updated");
+    showToast(t("toast_note_updated"));
   } else {
     await ContactNotes.add(noteFormContactId, patch);
-    showToast(noteFormKind === "call" ? "Call note added" : "Note added");
+    showToast(noteFormKind === "call" ? t("toast_call_note_added") : t("toast_note_added"));
   }
   closeScreen("screen-note-form");
   await renderDetail();
@@ -606,9 +625,9 @@ async function saveNoteForm() {
 
 async function deleteNoteForm() {
   if (!noteFormEditingId) return;
-  if (!confirm("Delete this note? This can't be undone.")) return;
+  if (!confirm(t("confirm_delete_note"))) return;
   await ContactNotes.remove(noteFormContactId, noteFormEditingId);
-  showToast("Note deleted");
+  showToast(t("toast_note_deleted"));
   closeScreen("screen-note-form");
   await renderDetail();
 }
@@ -618,8 +637,8 @@ function setDetailTab(tab) {
   document.querySelectorAll("#screen-detail .tab-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.dtab === tab)
   );
-  ["info", "activity", "notes", "docs"].forEach((t) => {
-    document.getElementById("detail-tab-" + t).hidden = t !== tab;
+  ["info", "activity", "notes", "docs"].forEach((tb) => {
+    document.getElementById("detail-tab-" + tb).hidden = tb !== tab;
   });
 }
 
@@ -635,16 +654,16 @@ function syncMultiFieldFromDOM(containerId, items, isAddress) {
 }
 
 function multiFieldPlaceholder(kind) {
-  if (kind === "addresses") return "Address";
-  if (kind === "emails") return "Email";
-  if (kind === "websites") return "example.com";
-  return "Phone number";
+  if (kind === "addresses") return t("ph_address");
+  if (kind === "emails") return t("ph_email");
+  if (kind === "websites") return t("ph_website");
+  return t("ph_phone");
 }
 function multiFieldAddLabel(kind) {
-  if (kind === "addresses") return "address";
-  if (kind === "emails") return "email";
-  if (kind === "websites") return "website";
-  return "phone";
+  if (kind === "addresses") return t("add_address");
+  if (kind === "emails") return t("add_email");
+  if (kind === "websites") return t("add_website");
+  return t("add_phone");
 }
 function multiFieldDefaultRow(kind) {
   if (kind === "addresses") return { label: "home", value: "", mapsLink: "" };
@@ -655,21 +674,21 @@ function multiFieldDefaultRow(kind) {
 function renderMultiFieldEditor(containerId, items, kind) {
   const wrap = document.getElementById(containerId);
   const isAddress = kind === "addresses";
-  const labelMeta = kind === "websites" ? WEBSITE_LABEL_META : LABEL_META;
+  const labelPairs = kind === "websites" ? websiteLabelPairs() : phoneEmailLabelPairs();
   wrap.innerHTML = items.map((it, idx) => `
     <div class="item-row multi-field-row" data-idx="${idx}">
       <select class="mf-label">
-        ${Object.entries(labelMeta).map(([k, v]) => `<option value="${k}" ${it.label === k ? "selected" : ""}>${v}</option>`).join("")}
+        ${labelPairs.map(([k, v]) => `<option value="${k}" ${it.label === k ? "selected" : ""}>${v}</option>`).join("")}
       </select>
       <div class="mf-value-col">
         <input type="text" class="mf-value" placeholder="${multiFieldPlaceholder(kind)}" value="${escapeHTML(it.value || "")}" />
-        ${isAddress ? `<input type="text" class="mf-maps" placeholder="Google Maps link (optional)" value="${escapeHTML(it.mapsLink || "")}" />` : ""}
+        ${isAddress ? `<input type="text" class="mf-maps" placeholder="${t("ph_maps_link")}" value="${escapeHTML(it.mapsLink || "")}" />` : ""}
       </div>
-      <button type="button" class="it-remove" title="Remove">
+      <button type="button" class="it-remove" title="${t("remove_title")}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
       </button>
     </div>
-  `).join("") + `<button type="button" class="btn-add-item" data-add="${containerId}">+ Add ${multiFieldAddLabel(kind)}</button>`;
+  `).join("") + `<button type="button" class="btn-add-item" data-add="${containerId}">${multiFieldAddLabel(kind)}</button>`;
 
   wrap.querySelectorAll(".it-remove").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -701,14 +720,14 @@ function renderCustomFieldsEditor(containerId, items) {
   wrap.innerHTML = items.map((it, idx) => `
     <div class="item-row custom-field-row" data-idx="${idx}">
       <div class="mf-value-col">
-        <input type="text" class="mf-value cf-label" placeholder="Field name (e.g. Instagram)" value="${escapeHTML(it.label || "")}" />
-        <input type="text" class="mf-value cf-value" placeholder="Value" value="${escapeHTML(it.value || "")}" />
+        <input type="text" class="mf-value cf-label" placeholder="${t("ph_custom_field_name")}" value="${escapeHTML(it.label || "")}" />
+        <input type="text" class="mf-value cf-value" placeholder="${t("ph_custom_field_value")}" value="${escapeHTML(it.value || "")}" />
       </div>
-      <button type="button" class="it-remove" title="Remove">
+      <button type="button" class="it-remove" title="${t("remove_title")}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
       </button>
     </div>
-  `).join("") + `<button type="button" class="btn-add-item" data-add="${containerId}">+ Add custom field</button>`;
+  `).join("") + `<button type="button" class="btn-add-item" data-add="${containerId}">${t("add_custom_field")}</button>`;
 
   wrap.querySelectorAll(".it-remove").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -772,16 +791,16 @@ async function renderTagChips() {
   const allTags = await Tags.getAll();
   const wrap = document.getElementById("f-tags-chips");
   if (formTagIds.length === 0) {
-    wrap.innerHTML = `<p class="hint-text" style="margin:0 0 8px">No tags yet</p>`;
+    wrap.innerHTML = `<p class="hint-text" style="margin:0 0 8px">${t("empty_no_tags_short")}</p>`;
     return;
   }
   wrap.innerHTML = formTagIds.map((id) => {
-    const t = allTags.find((x) => x.id === id);
-    if (!t) return "";
+    const tg = allTags.find((x) => x.id === id);
+    if (!tg) return "";
     return `
-      <span class="tag-chip" style="background:${t.color}">
-        ${escapeHTML(t.name)}
-        <button type="button" class="tag-chip-remove" data-id="${t.id}" title="Remove">&times;</button>
+      <span class="tag-chip" style="background:${tg.color}">
+        ${escapeHTML(tg.name)}
+        <button type="button" class="tag-chip-remove" data-id="${tg.id}" title="${t("remove_title")}">&times;</button>
       </span>
     `;
   }).join("");
@@ -798,14 +817,14 @@ async function renderTagDropdownList() {
   const allTags = await Tags.getAll();
   const wrap = document.getElementById("tag-dropdown-list");
   if (allTags.length === 0) {
-    wrap.innerHTML = `<p class="hint-text" style="margin:2px 0 0">No tags yet — add one below</p>`;
+    wrap.innerHTML = `<p class="hint-text" style="margin:2px 0 0">${t("no_tags_dropdown")}</p>`;
     return;
   }
-  wrap.innerHTML = allTags.map((t) => `
+  wrap.innerHTML = allTags.map((tg) => `
     <label class="tag-dropdown-row">
-      <input type="checkbox" class="tag-check" value="${t.id}" ${formTagIds.includes(t.id) ? "checked" : ""} />
-      <span class="tag-dot" style="background:${t.color}"></span>
-      <span>${escapeHTML(t.name)}</span>
+      <input type="checkbox" class="tag-check" value="${tg.id}" ${formTagIds.includes(tg.id) ? "checked" : ""} />
+      <span class="tag-dot" style="background:${tg.color}"></span>
+      <span>${escapeHTML(tg.name)}</span>
     </label>
   `).join("");
   wrap.querySelectorAll(".tag-check").forEach((cb) => {
@@ -823,12 +842,12 @@ async function renderTagDropdownList() {
 async function addNewTagFromForm() {
   const nameInput = document.getElementById("new-tag-name");
   const name = nameInput.value.trim();
-  if (!name) { showToast("Enter a tag name"); return; }
+  if (!name) { showToast(t("toast_enter_tag_name")); return; }
   const allTags = await Tags.getAll();
-  const dupe = allTags.find((t) => t.name.toLowerCase() === name.toLowerCase());
+  const dupe = allTags.find((tg) => tg.name.toLowerCase() === name.toLowerCase());
   if (dupe) {
     if (!formTagIds.includes(dupe.id)) formTagIds.push(dupe.id);
-    showToast("Tag already exists — selected it");
+    showToast(t("toast_tag_exists_selected"));
   } else {
     const colorsWrap = document.getElementById("new-tag-colors");
     const tag = await Tags.add(name, colorsWrap.dataset.selected);
@@ -869,7 +888,7 @@ async function openForm(id) {
   formEditingId = id || null;
   formCategory = "customer";
   formPhotoDataUrl = "";
-  document.getElementById("form-title").textContent = id ? "Edit contact" : "New contact";
+  document.getElementById("form-title").textContent = id ? t("form_title_edit") : t("form_title_new");
 
   ["first", "last", "nickname", "company", "jobtitle", "birthday"].forEach((f) => {
     const el = document.getElementById("f-" + f);
@@ -966,15 +985,15 @@ async function saveForm() {
     category: formCategory,
   };
   if (!payload.firstName && !payload.lastName && !payload.company) {
-    showToast("Add at least a name or company");
+    showToast(t("toast_add_name_or_company"));
     return;
   }
   if (formEditingId) {
     await DB.update(formEditingId, payload);
-    showToast("Contact updated");
+    showToast(t("toast_contact_updated"));
   } else {
     await DB.add(payload);
-    showToast("Contact added");
+    showToast(t("toast_contact_added"));
   }
   await Contacts.refresh();
   closeAllScreens();
@@ -982,9 +1001,9 @@ async function saveForm() {
 
 async function deleteCurrentContact() {
   if (!Contacts.currentId) return;
-  if (!confirm("Delete this contact? This can't be undone.")) return;
+  if (!confirm(t("confirm_delete_contact"))) return;
   await DB.remove(Contacts.currentId);
-  showToast("Contact deleted");
+  showToast(t("toast_contact_deleted"));
   await Contacts.refresh();
   closeAllScreens();
 }

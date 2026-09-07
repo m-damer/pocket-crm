@@ -29,7 +29,8 @@ let fieldPickerOnConfirm = null; // function(selectedKeys)
 
 function renderFieldPicker() {
   const wrap = document.getElementById("field-picker-list");
-  wrap.innerHTML = Object.entries(SHARE_FIELD_META).map(([key, label]) => `
+  const meta = shareFieldMeta();
+  wrap.innerHTML = Object.entries(meta).map(([key, label]) => `
     <label class="tag-dropdown-row">
       <input type="checkbox" class="fp-check" value="${key}" ${fieldPickerSelected.includes(key) ? "checked" : ""} />
       <span>${label}</span>
@@ -61,7 +62,7 @@ async function openQRContactPicker() {
   const all = await DB.getAll();
   const wrap = document.getElementById("qr-contact-picker-list");
   if (all.length === 0) {
-    wrap.innerHTML = `<div class="empty-state" style="padding:24px 16px"><p>No contacts yet.</p></div>`;
+    wrap.innerHTML = `<div class="empty-state" style="padding:24px 16px"><p>${t("empty_no_contacts_short")}</p></div>`;
   } else {
     wrap.innerHTML = all.map((c) => `
       <div class="contact-row" data-id="${c.id}">
@@ -91,7 +92,7 @@ async function openQRContactPicker() {
 
 async function confirmQRContactPicker() {
   if (qrContactPickerSelected.size === 0) {
-    showToast("Select at least one contact");
+    showToast(t("toast_select_one_contact"));
     return;
   }
   const all = await DB.getAll();
@@ -103,7 +104,7 @@ async function confirmQRContactPicker() {
 // ---------------- QR source: phone contacts (native picker) ----------------
 async function pickQRFromPhoneContacts() {
   if (!contactPickerSupported()) {
-    showToast("Your browser doesn't support the contact picker");
+    showToast(t("toast_no_contact_picker"));
     return;
   }
   try {
@@ -142,7 +143,7 @@ function confirmQRManualForm() {
   const phone = document.getElementById("qr-manual-phone").value.trim();
   const email = document.getElementById("qr-manual-email").value.trim();
   if (!first && !last && !company) {
-    showToast("Add at least a name or company");
+    showToast(t("toast_add_name_or_company"));
     return;
   }
   qrPendingContacts = [{
@@ -162,7 +163,7 @@ async function handleQRFieldsConfirmed(selectedKeys) {
   const generated = [];
   for (const c of qrPendingContacts) {
     const vcardText = contactToVCard(c, selectedKeys);
-    const label = fullName(c) || c.company || "Contact";
+    const label = fullName(c) || c.company || t("qr_code_fallback");
     const entry = await QRCodes.add({ label, vcardText });
     generated.push(entry);
   }
@@ -173,7 +174,7 @@ async function handleQRFieldsConfirmed(selectedKeys) {
   if (generated.length === 1) {
     openQRView(generated[0].id);
   } else if (generated.length > 1) {
-    showToast(`Generated ${generated.length} QR codes`);
+    showToast(t("toast_qr_generated", { n: generated.length }));
   }
 }
 
@@ -182,14 +183,14 @@ async function renderQRList() {
   const codes = await QRCodes.getAll();
   const wrap = document.getElementById("qr-list");
   if (codes.length === 0) {
-    wrap.innerHTML = `<div class="empty-state" style="padding:32px 16px"><p>No QR codes yet. Tap "+ Generate" to make one from a contact.</p></div>`;
+    wrap.innerHTML = `<div class="empty-state" style="padding:32px 16px"><p>${t("empty_no_qr_codes")}</p></div>`;
     return;
   }
   wrap.innerHTML = codes.map((q) => `
     <div class="contact-row qr-row" data-id="${q.id}">
       <div class="qr-thumb-wrap"><canvas id="qr-thumb-${q.id}"></canvas></div>
       <div class="contact-info">
-        <p class="contact-name">${escapeHTML(q.label || "QR code")}</p>
+        <p class="contact-name">${escapeHTML(q.label || t("qr_code_fallback"))}</p>
         <p class="contact-sub">${fmtDate(q.createdAt)}</p>
       </div>
     </div>
@@ -210,8 +211,8 @@ async function openQRView(id) {
   const q = codes.find((x) => x.id === id);
   if (!q) return;
   qrViewingId = id;
-  document.getElementById("qr-view-label").textContent = q.label || "QR code";
-  document.getElementById("qr-view-date").textContent = "Generated " + fmtDate(q.createdAt);
+  document.getElementById("qr-view-label").textContent = q.label || t("qr_code_fallback");
+  document.getElementById("qr-view-date").textContent = t("qr_generated_prefix", { date: fmtDate(q.createdAt) });
   const canvas = document.getElementById("qr-view-canvas");
   renderQRToCanvas(q.vcardText, canvas, { cellSize: 8, margin: 16 });
   showScreen("screen-qr-view");
@@ -243,20 +244,20 @@ async function shareQRImage() {
   if (navigator.canShare && navigator.share) {
     try {
       if (navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: "QR code" });
+        await navigator.share({ files: [file], title: t("qr_code_fallback") });
         return;
       }
     } catch (e) { /* fall through to download */ }
   }
   await downloadQRImage();
-  showToast("QR image downloaded");
+  showToast(t("toast_qr_downloaded"));
 }
 
 async function deleteQRCode() {
   if (!qrViewingId) return;
-  if (!confirm("Delete this QR code? This can't be undone.")) return;
+  if (!confirm(t("confirm_delete_qr"))) return;
   await QRCodes.remove(qrViewingId);
-  showToast("QR code deleted");
+  showToast(t("toast_qr_deleted"));
   closeAllScreens();
   await renderQRList();
 }

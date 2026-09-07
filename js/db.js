@@ -50,15 +50,17 @@ function uid(prefix = "c") {
 }
 
 const TAG_COLOR_PALETTE = ["#1F3D71", "#009BDE", "#1F8A5F", "#C97C1F", "#B3261E", "#8A93A3", "#6B4FA0", "#0E7C86", "#C2185B", "#5D4037"];
-const CATEGORY_LABELS = { customer: "Customer", lead: "Lead", lost: "Lost" };
 
 // Builds a short human-readable activity description for a note event.
-function describeNoteActivity(entry, action) {
+// `actionKey` is one of "added" | "edited" | "deleted"; translated at the
+// time the activity is logged, so entries keep the wording of whichever
+// language was active the moment the action happened (like a timestamp).
+function describeNoteActivity(entry, actionKey) {
   const kindLabel = entry.kind === "call"
-    ? (entry.callMedia === "voice" ? "Call note (voice)" : "Call note")
-    : "Note";
+    ? (entry.callMedia === "voice" ? t("activity_call_note_voice") : t("activity_call_note"))
+    : t("activity_note");
   const title = entry.title ? ` "${entry.title}"` : "";
-  return `${kindLabel}${title} ${action}`;
+  return `${kindLabel}${title} ${t("activity_" + actionKey)}`;
 }
 
 // Upgrades an old-shape contact (flat phone/email/address strings) to the
@@ -225,7 +227,7 @@ const DB = {
       category: "lead", // customer | lead | lost
       tags: [],
       notesList: [], // {id, kind: note|call, title, text, callMedia, audioDataUrl, audioDurationSec, createdAt, updatedAt}
-      activities: [{ id: uid("a"), date: now, type: "contact_created", text: "Contact added" }],
+      activities: [{ id: uid("a"), date: now, type: "contact_created", text: t("activity_contact_added") }],
       createdAt: now,
       updatedAt: now,
       ...contact,
@@ -245,7 +247,7 @@ const DB = {
       finalPatch = {
         ...patch,
         activities: [
-          { id: uid("a"), date: now, type: "category_changed", text: `Category changed to ${CATEGORY_LABELS[patch.category] || patch.category}` },
+          { id: uid("a"), date: now, type: "category_changed", text: t("activity_category_changed", { category: (typeof catLabel === "function" ? catLabel(patch.category) : patch.category) }) },
           ...(existing.activities || []),
         ],
       };
@@ -452,6 +454,7 @@ const Settings = {
         resolve({
           businessName: "", address: "", phone: "", email: "",
           currency: "USD", logoDataUrl: "", invoiceCounter: 0, proposalCounter: 0,
+          language: "en", // "en" | "ar" — active UI language, mirrored to localStorage for instant paint
           contactFieldConfig: DEFAULT_CONTACT_FIELD_CONFIG,
           tags: [], // {id, name, color}
           tagsMigrated: false,

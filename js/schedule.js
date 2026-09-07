@@ -1,6 +1,9 @@
+function eventTypeLabel(type) {
+  return type === "meeting" ? t("event_type_meeting") : t("event_type_task");
+}
 const EVENT_TYPE_META = {
-  task: { label: "Task", color: "#6B5FB3", soft: "#EFEDFA" },
-  meeting: { label: "Meeting", color: "#009BDE", soft: "#E5F5FC" },
+  task: { color: "#6B5FB3", soft: "#EFEDFA" },
+  meeting: { color: "#009BDE", soft: "#E5F5FC" },
 };
 
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -25,14 +28,14 @@ function dayLabel(iso) {
   const today = new Date();
   const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diffDays = Math.round((startOf(d) - startOf(today)) / 86400000);
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Tomorrow";
-  if (diffDays === -1) return "Yesterday";
-  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  if (diffDays === 0) return t("day_today");
+  if (diffDays === 1) return t("day_tomorrow");
+  if (diffDays === -1) return t("day_yesterday");
+  return d.toLocaleDateString(I18N.localeTag(), { weekday: "short", day: "numeric", month: "short" });
 }
 
 function timeLabel(iso) {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString(I18N.localeTag(), { hour: "2-digit", minute: "2-digit" });
 }
 
 const Schedule = {
@@ -52,8 +55,8 @@ const Schedule = {
     return this.all.filter((e) => {
       if (this.filter === "completed") return e.completed;
       if (e.completed && this.filter !== "all") return false;
-      const t = new Date(e.when).getTime();
-      if (this.filter === "today") return t >= startOfToday && t < endOfToday;
+      const t2 = new Date(e.when).getTime();
+      if (this.filter === "today") return t2 >= startOfToday && t2 < endOfToday;
       if (this.filter === "upcoming") return true; // all non-completed, any time (past shows as overdue)
       return true; // "all"
     });
@@ -72,8 +75,8 @@ const Schedule = {
       el.innerHTML = `
         <div class="empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
-          <h3>${this.filter === "completed" ? "Nothing completed yet" : "Nothing scheduled"}</h3>
-          <p>Tap the + button to add a task or meeting.</p>
+          <h3>${this.filter === "completed" ? t("empty_nothing_completed") : t("empty_nothing_scheduled")}</h3>
+          <p>${t("empty_schedule_hint")}</p>
         </div>`;
       return;
     }
@@ -95,14 +98,14 @@ const Schedule = {
         const cname = this.contactName(e.contactId);
         return `
         <div class="event-row ${e.completed ? "done" : ""}" data-id="${e.id}">
-          <button class="event-check ${e.completed ? "checked" : ""}" data-toggle="${e.id}" title="Mark ${e.completed ? "incomplete" : "complete"}">
+          <button class="event-check ${e.completed ? "checked" : ""}" data-toggle="${e.id}" title="${e.completed ? t("mark_incomplete_title") : t("mark_complete_title")}">
             ${e.completed ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : ""}
           </button>
           <div class="event-info" data-open="${e.id}">
-            <p class="event-title">${escapeHTML(e.title || "Untitled")}</p>
-            <p class="event-sub">${timeLabel(e.when)}${cname ? " · " + escapeHTML(cname) : ""}${overdue ? " · Overdue" : ""}</p>
+            <p class="event-title">${escapeHTML(e.title || t("untitled_event"))}</p>
+            <p class="event-sub">${timeLabel(e.when)}${cname ? " · " + escapeHTML(cname) : ""}${overdue ? " · " + t("overdue_suffix") : ""}</p>
           </div>
-          <span class="badge event-badge" style="background:${EVENT_TYPE_META[e.type].soft};color:${EVENT_TYPE_META[e.type].color}">${EVENT_TYPE_META[e.type].label}</span>
+          <span class="badge event-badge" style="background:${EVENT_TYPE_META[e.type].soft};color:${EVENT_TYPE_META[e.type].color}">${eventTypeLabel(e.type)}</span>
         </div>`;
       }).join("")}
     `).join("");
@@ -141,11 +144,11 @@ const Schedule = {
       new Date(e.when).getTime() > now - 5 * 60000
     );
     for (const e of due) {
-      const body = `${EVENT_TYPE_META[e.type].label} · ${timeLabel(e.when)}${this.contactName(e.contactId) ? " · " + this.contactName(e.contactId) : ""}`;
+      const body = `${eventTypeLabel(e.type)} · ${timeLabel(e.when)}${this.contactName(e.contactId) ? " · " + this.contactName(e.contactId) : ""}`;
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        try { new Notification(e.title || "Reminder", { body }); } catch (_) { showToast(`Reminder: ${e.title}`); }
+        try { new Notification(e.title || t("reminder_fallback_title"), { body }); } catch (_) { showToast(t("toast_reminder", { title: e.title })); }
       } else {
-        showToast(`Reminder: ${e.title}`);
+        showToast(t("toast_reminder", { title: e.title }));
       }
       await Events.update(e.id, { notified: true });
     }
@@ -160,7 +163,7 @@ const Schedule = {
 
     const stops = this.all
       .filter((e) => e.type === "meeting" && !e.completed)
-      .filter((e) => { const t = new Date(e.when).getTime(); return t >= startOfToday && t < endOfToday; })
+      .filter((e) => { const t2 = new Date(e.when).getTime(); return t2 >= startOfToday && t2 < endOfToday; })
       .sort((a, b) => a.when.localeCompare(b.when))
       .map((e) => {
         const c = e.contactId ? Contacts.all.find((c) => c.id === e.contactId) : null;
@@ -170,7 +173,7 @@ const Schedule = {
       .filter(Boolean);
 
     if (stops.length === 0) {
-      showToast("No meetings with an address scheduled today");
+      showToast(t("toast_no_meetings_with_address"));
       return;
     }
     const destination = stops[stops.length - 1];
@@ -187,7 +190,7 @@ let eventType = "task";
 
 function populateContactSelect(selectedId) {
   const sel = document.getElementById("ev-contact");
-  sel.innerHTML = `<option value="">No linked contact</option>` +
+  sel.innerHTML = `<option value="">${t("no_linked_contact")}</option>` +
     Contacts.all.map((c) => `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>${escapeHTML(fullName(c))}</option>`).join("");
 }
 
@@ -199,7 +202,7 @@ function setEventType(type) {
 async function openEventForm(id) {
   eventEditingId = id || null;
   eventType = "task";
-  document.getElementById("ev-form-title").textContent = id ? "Edit item" : "New task or meeting";
+  document.getElementById("ev-form-title").textContent = id ? t("event_form_title_edit") : t("event_form_title_new");
 
   const now = new Date(Date.now() + 30 * 60000); // default: 30 min from now
   document.getElementById("ev-title").value = "";
@@ -233,7 +236,7 @@ async function saveEventForm() {
   const date = document.getElementById("ev-date").value;
   const time = document.getElementById("ev-time").value;
   if (!title || !date) {
-    showToast("Add a title and date");
+    showToast(t("toast_add_title_and_date"));
     return;
   }
   const remind = document.getElementById("ev-remind").checked;
@@ -251,10 +254,10 @@ async function saveEventForm() {
   if (eventEditingId) {
     payload.notified = false; // allow re-notification if time changed
     await Events.update(eventEditingId, payload);
-    showToast("Updated");
+    showToast(t("toast_updated"));
   } else {
     await Events.add(payload);
-    showToast("Added to schedule");
+    showToast(t("toast_added_to_schedule"));
   }
   await Schedule.refresh();
   closeAllScreens();
@@ -262,9 +265,9 @@ async function saveEventForm() {
 
 async function deleteCurrentEvent() {
   if (!eventEditingId) return;
-  if (!confirm("Delete this item?")) return;
+  if (!confirm(t("confirm_delete_item"))) return;
   await Events.remove(eventEditingId);
-  showToast("Deleted");
+  showToast(t("toast_deleted"));
   await Schedule.refresh();
   closeAllScreens();
 }

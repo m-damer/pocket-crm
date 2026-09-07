@@ -6,17 +6,20 @@ function vcardEscape(s) {
 // Field keys used by the shared field picker (QR generation + bulk share).
 // Name/nickname are always included, like an identity — everything else is
 // optional and gated behind `includeKeys`. Pass no `includeKeys` (or null)
-// to keep the original full-export behavior.
-const SHARE_FIELD_META = {
-  company: "Company & job title",
-  phones: "Phone numbers",
-  emails: "Emails",
-  addresses: "Addresses",
-  websites: "Websites",
-  birthday: "Birthday",
-  notes: "Notes",
-};
-const SHARE_FIELD_ALL_KEYS = Object.keys(SHARE_FIELD_META);
+// to keep the original full-export behavior. Labels are resolved live via
+// shareFieldMeta() so they follow the active language.
+const SHARE_FIELD_ALL_KEYS = ["company", "phones", "emails", "addresses", "websites", "birthday", "notes"];
+function shareFieldMeta() {
+  return {
+    company: t("field_meta_company"),
+    phones: t("field_phones"),
+    emails: t("field_emails"),
+    addresses: t("field_addresses"),
+    websites: t("field_websites"),
+    birthday: t("field_birthday"),
+    notes: t("field_meta_notes"),
+  };
+}
 
 function contactToVCard(c, includeKeys) {
   const include = (key) => !includeKeys || includeKeys.includes(key);
@@ -88,15 +91,15 @@ async function saveContactToPhone(contactId) {
     } catch (_) { /* fall through to download */ }
   }
   downloadFile(vcard, filename, "text/vcard");
-  showToast("Contact file downloaded — open it to add to your phone");
+  showToast(t("toast_saved_open_to_add"));
 }
 
 async function exportAllVCards() {
   const all = await DB.getAll();
-  if (all.length === 0) { showToast("No contacts to export"); return; }
+  if (all.length === 0) { showToast(t("toast_no_contacts_to_export")); return; }
   const vcard = all.map(contactToVCard).join("\r\n");
   downloadFile(vcard, `crm-contacts-${new Date().toISOString().slice(0, 10)}.vcf`, "text/vcard");
-  showToast("vCard file downloaded");
+  showToast(t("toast_vcard_downloaded"));
 }
 
 // ---------------- vCard import ----------------
@@ -182,10 +185,10 @@ function parseVCards(text) {
 
 function vcardTypeToLabel(rawKey) {
   const m = /TYPE=([^;:]+)/i.exec(rawKey);
-  const t = (m ? m[1] : "").toUpperCase();
-  if (t.includes("CELL")) return "mobile";
-  if (t.includes("HOME")) return "home";
-  if (t.includes("WORK")) return "work";
+  const t2 = (m ? m[1] : "").toUpperCase();
+  if (t2.includes("CELL")) return "mobile";
+  if (t2.includes("HOME")) return "home";
+  if (t2.includes("WORK")) return "work";
   return "other";
 }
 
@@ -193,14 +196,14 @@ async function importVCardFile(file) {
   const text = await file.text();
   const parsed = parseVCards(text);
   if (parsed.length === 0) {
-    showToast("No contacts found in that file");
+    showToast(t("toast_no_contacts_in_file"));
     return;
   }
   for (const p of parsed) {
     await DB.add({ ...p, category: "lead" });
   }
   await Contacts.refresh();
-  showToast(`Imported ${parsed.length} contact${parsed.length === 1 ? "" : "s"}`);
+  showToast(I18N.plural(parsed.length, "toast_imported_contacts", "toast_imported_contacts_plural"));
 }
 
 // ---------------- Native Contact Picker (Android Chrome) ----------------
@@ -210,7 +213,7 @@ function contactPickerSupported() {
 
 async function importFromPhoneContacts() {
   if (!contactPickerSupported()) {
-    showToast("Your browser doesn't support the contact picker");
+    showToast(t("toast_no_contact_picker"));
     return;
   }
   try {
@@ -232,7 +235,7 @@ async function importFromPhoneContacts() {
       count++;
     }
     await Contacts.refresh();
-    showToast(`Imported ${count} contact${count === 1 ? "" : "s"} from your phone`);
+    showToast(I18N.plural(count, "toast_imported_from_phone", "toast_imported_from_phone_plural"));
   } catch (_) {
     // user cancelled the picker — nothing to do
   }
@@ -244,15 +247,15 @@ async function importBackupFile(file) {
   try {
     data = JSON.parse(await file.text());
   } catch (_) {
-    showToast("That doesn't look like a valid backup file");
+    showToast(t("toast_invalid_backup"));
     return;
   }
   if (!data || typeof data !== "object") {
-    showToast("That doesn't look like a valid backup file");
+    showToast(t("toast_invalid_backup"));
     return;
   }
   const counts = await DB.importBackup(data);
   await Contacts.refresh();
   await Schedule.refresh();
-  showToast(`Restored ${counts.contacts} contacts, ${counts.events} schedule items`);
+  showToast(t("toast_restored", { contacts: counts.contacts, events: counts.events }));
 }
