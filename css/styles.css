@@ -390,6 +390,10 @@ input, select, textarea { font-family: inherit; }
 .segmented button.sel-lost.active { background: var(--lost-soft); color: var(--lost); }
 .segmented button.sel-task.active { background: #EFEDFA; color: #6B5FB3; }
 .segmented button.sel-meeting.active { background: var(--blue-soft); color: var(--blue); }
+.segmented button.sel-note.active { background: var(--blue-soft); color: var(--blue); }
+.segmented button.sel-call.active { background: #EFEDFA; color: #6B5FB3; }
+.segmented button.sel-text.active { background: var(--blue-soft); color: var(--blue); }
+.segmented button.sel-voice.active { background: var(--lead-soft); color: var(--lead); }
 
 .form-row-2 { display: flex; gap: 10px; }
 .form-row-2 .form-group { flex: 1; }
@@ -827,3 +831,12 @@ input, select, textarea { font-family: inherit; }
   padding: 9px 8px; font-size: 14px; background: var(--bg); color: var(--text);
 }
 .tag-editor-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ---------- Notes tab: note cards + note/call-note editor ---------- */
+.note-kind-badge {
+  font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; flex-shrink: 0;
+}
+.note-card { cursor: pointer; }
+.record-widget { display: flex; align-items: center; gap: 12px; }
+.record-timer { font-variant-numeric: tabular-nums; font-weight: 700; color: #B3261E; font-size: 15px; }

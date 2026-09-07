@@ -249,6 +249,20 @@ document.getElementById("btn-tags-back").addEventListener("click", () => {
   closeAllScreens();
 });
 
+// ---------------- Wiring: Note / call note editor ----------------
+document.getElementById("btn-note-cancel").addEventListener("click", () => {
+  releaseRecordingResources();
+  closeAllScreens();
+});
+document.getElementById("btn-note-save").addEventListener("click", saveNoteForm);
+document.getElementById("btn-note-delete").addEventListener("click", deleteNoteForm);
+document.querySelectorAll("#note-type-toggle button").forEach((b) => {
+  b.addEventListener("click", () => setNoteKind(b.dataset.noteKind));
+});
+document.querySelectorAll("#note-call-media-toggle button").forEach((b) => {
+  b.addEventListener("click", () => setNoteCallMedia(b.dataset.callMedia));
+});
+
 // ---------------- Wiring: Data export/import ----------------
 function downloadExport(json) {
   const blob = new Blob([json], { type: "application/json" });

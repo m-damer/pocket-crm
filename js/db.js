@@ -50,13 +50,23 @@ function uid(prefix = "c") {
 }
 
 const TAG_COLOR_PALETTE = ["#1F3D71", "#009BDE", "#1F8A5F", "#C97C1F", "#B3261E", "#8A93A3", "#6B4FA0", "#0E7C86", "#C2185B", "#5D4037"];
+const CATEGORY_LABELS = { customer: "Customer", lead: "Lead", lost: "Lost" };
+
+// Builds a short human-readable activity description for a note event.
+function describeNoteActivity(entry, action) {
+  const kindLabel = entry.kind === "call"
+    ? (entry.callMedia === "voice" ? "Call note (voice)" : "Call note")
+    : "Note";
+  const title = entry.title ? ` "${entry.title}"` : "";
+  return `${kindLabel}${title} ${action}`;
+}
 
 // Upgrades an old-shape contact (flat phone/email/address strings) to the
 // new multi-value shape, in place on read. Persists the upgrade once so it
 // only has to run a single time per contact.
 function needsContactMigration(c) {
   return c.phones === undefined || c.emails === undefined || c.addresses === undefined ||
-    c.websites === undefined || c.customFields === undefined;
+    c.websites === undefined || c.customFields === undefined || c.notesList === undefined;
 }
 
 function migrateContactShape(c) {
@@ -77,6 +87,16 @@ function migrateContactShape(c) {
     migrated.websites = c.website ? [{ id: uid("w"), label: "other", value: c.website }] : [];
   }
   if (migrated.customFields === undefined) migrated.customFields = [];
+  if (migrated.notesList === undefined) {
+    // Older builds stored one free-text `notes` string — carry it over as
+    // the first entry of the new multi-note list, then drop the old field.
+    const now = new Date().toISOString();
+    migrated.notesList = c.notes ? [{
+      id: uid("n"), kind: "note", title: "", text: c.notes,
+      callMedia: "", audioDataUrl: "", audioDurationSec: 0,
+      createdAt: c.createdAt || now, updatedAt: c.updatedAt || now,
+    }] : [];
+  }
   if (migrated.nickname === undefined) migrated.nickname = "";
   if (migrated.jobTitle === undefined) migrated.jobTitle = "";
   if (migrated.birthday === undefined) migrated.birthday = "";
@@ -85,6 +105,7 @@ function migrateContactShape(c) {
   delete migrated.email;
   delete migrated.address;
   delete migrated.website;
+  delete migrated.notes;
   return migrated;
 }
 
@@ -203,8 +224,8 @@ const DB = {
       birthday: "", // YYYY-MM-DD
       category: "lead", // customer | lead | lost
       tags: [],
-      notes: "",
-      activities: [],
+      notesList: [], // {id, kind: note|call, title, text, callMedia, audioDataUrl, audioDurationSec, createdAt, updatedAt}
+      activities: [{ id: uid("a"), date: now, type: "contact_created", text: "Contact added" }],
       createdAt: now,
       updatedAt: now,
       ...contact,
@@ -216,7 +237,20 @@ const DB = {
   async update(id, patch) {
     const existing = await this.get(id);
     if (!existing) throw new Error("Contact not found");
-    const updated = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    let finalPatch = patch;
+    // Auto-log a category change, unless the caller already supplied its own
+    // `activities` patch (e.g. ContactNotes, which logs note-specific events).
+    if (patch.category !== undefined && patch.category !== existing.category && patch.activities === undefined) {
+      const now = new Date().toISOString();
+      finalPatch = {
+        ...patch,
+        activities: [
+          { id: uid("a"), date: now, type: "category_changed", text: `Category changed to ${CATEGORY_LABELS[patch.category] || patch.category}` },
+          ...(existing.activities || []),
+        ],
+      };
+    }
+    const updated = { ...existing, ...finalPatch, updatedAt: new Date().toISOString() };
     await withStore(STORE_CONTACTS, "readwrite", (store) => store.put(updated));
     return updated;
   },
@@ -490,6 +524,61 @@ const Tags = {
       counts[tid] = (counts[tid] || 0) + 1;
     }));
     return counts;
+  },
+};
+
+// ---------------- Contact notes (multiple, per contact) ----------------
+const ContactNotes = {
+  // note: { kind: "note"|"call", title, text, callMedia: ""|"text"|"voice", audioDataUrl, audioDurationSec }
+  async add(contactId, note) {
+    const c = await DB.get(contactId);
+    if (!c) throw new Error("Contact not found");
+    const now = new Date().toISOString();
+    const entry = {
+      id: uid("n"), kind: "note", title: "", text: "",
+      callMedia: "", audioDataUrl: "", audioDurationSec: 0,
+      createdAt: now, updatedAt: now,
+      ...note,
+    };
+    const notesList = [entry, ...(c.notesList || [])];
+    const activities = [
+      { id: uid("a"), date: now, type: entry.kind === "call" ? "call_note_added" : "note_added", text: describeNoteActivity(entry, "added") },
+      ...(c.activities || []),
+    ];
+    await DB.update(contactId, { notesList, activities });
+    return entry;
+  },
+
+  async update(contactId, noteId, patch) {
+    const c = await DB.get(contactId);
+    if (!c) throw new Error("Contact not found");
+    const now = new Date().toISOString();
+    let updatedEntry = null;
+    const notesList = (c.notesList || []).map((n) => {
+      if (n.id !== noteId) return n;
+      updatedEntry = { ...n, ...patch, updatedAt: now };
+      return updatedEntry;
+    });
+    if (!updatedEntry) return;
+    const activities = [
+      { id: uid("a"), date: now, type: updatedEntry.kind === "call" ? "call_note_edited" : "note_edited", text: describeNoteActivity(updatedEntry, "edited") },
+      ...(c.activities || []),
+    ];
+    await DB.update(contactId, { notesList, activities });
+  },
+
+  async remove(contactId, noteId) {
+    const c = await DB.get(contactId);
+    if (!c) throw new Error("Contact not found");
+    const removed = (c.notesList || []).find((n) => n.id === noteId);
+    if (!removed) return;
+    const notesList = (c.notesList || []).filter((n) => n.id !== noteId);
+    const now = new Date().toISOString();
+    const activities = [
+      { id: uid("a"), date: now, type: removed.kind === "call" ? "call_note_deleted" : "note_deleted", text: describeNoteActivity(removed, "deleted") },
+      ...(c.activities || []),
+    ];
+    await DB.update(contactId, { notesList, activities });
   },
 };
 

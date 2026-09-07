@@ -25,7 +25,9 @@ function contactToVCard(c) {
     lines.push(`URL;TYPE=${(w.label || "OTHER").toUpperCase()}:${vcardEscape(w.value)}`);
   });
   if (c.birthday) lines.push(`BDAY:${c.birthday.replace(/-/g, "")}`);
-  if (c.notes) lines.push(`NOTE:${vcardEscape(c.notes)}`);
+  (c.notesList || []).filter((n) => n.kind === "note" && n.text).forEach((n) => {
+    lines.push(`NOTE:${vcardEscape(n.title ? `${n.title}: ${n.text}` : n.text)}`);
+  });
   lines.push("END:VCARD");
   return lines.join("\r\n");
 }
@@ -138,7 +140,13 @@ function parseVCards(text) {
         current.websites.push({ label: "other", value: vcardUnescape(value) });
       }
     } else if (key === "NOTE") {
-      current.notes = vcardUnescape(value);
+      current.notesList = current.notesList || [];
+      const now = new Date().toISOString();
+      current.notesList.push({
+        id: uid("n"), kind: "note", title: "", text: vcardUnescape(value),
+        callMedia: "", audioDataUrl: "", audioDurationSec: 0,
+        createdAt: now, updatedAt: now,
+      });
     }
   }
   return cards.filter((c) => c.firstName || c.lastName || c.company);

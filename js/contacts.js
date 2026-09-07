@@ -251,25 +251,12 @@ async function renderDetail() {
         : activities.map((a) => `
           <div class="activity-item">
             <p class="when">${fmtDate(a.date)}</p>
-            <p class="what">${escapeHTML(a.note)}</p>
+            <p class="what">${escapeHTML(a.text || "")}</p>
           </div>`).join("")}
     </div>
   `;
 
-  document.getElementById("detail-tab-notes").innerHTML = `
-    <div class="notes-box">
-      <textarea id="notes-textarea" placeholder="Write notes about this contact...">${escapeHTML(c.notes || "")}</textarea>
-    </div>
-  `;
-  const notesArea = document.getElementById("notes-textarea");
-  let notesTimer = null;
-  notesArea.addEventListener("input", () => {
-    clearTimeout(notesTimer);
-    notesTimer = setTimeout(async () => {
-      await DB.update(c.id, { notes: notesArea.value });
-      showToast("Notes saved");
-    }, 700);
-  });
+  await renderNotesTab(c.id);
 
   setDetailTab(detailTab);
   await renderDocsTab(c.id);
@@ -327,6 +314,276 @@ async function renderDocsTab(contactId) {
       await renderDocsTab(contactId);
     });
   });
+}
+
+// ---------------- Notes tab (multiple notes + call notes, per contact) ----------------
+function fmtDuration(sec) {
+  sec = Math.max(0, Math.round(sec || 0));
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function renderNoteCardHTML(n) {
+  const isCall = n.kind === "call";
+  const kindLabel = isCall ? (n.callMedia === "voice" ? "Call · Voice" : "Call · Text") : "Note";
+  const preview = isCall && n.callMedia === "voice"
+    ? `<p class="value" style="color:var(--text-muted)">🎙 ${fmtDuration(n.audioDurationSec)} recording</p>`
+    : (n.text ? `<p class="value" style="white-space:pre-wrap">${escapeHTML(n.text.length > 160 ? n.text.slice(0, 160) + "…" : n.text)}</p>` : "");
+  return `
+    <div class="field-row note-card" data-id="${n.id}">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <p class="label" style="margin:0">${escapeHTML(n.title || (isCall ? "Call note" : "Note"))}</p>
+        <span class="note-kind-badge">${kindLabel}</span>
+      </div>
+      ${preview}
+      <p class="label" style="margin-top:6px">${fmtDate(n.updatedAt)}${n.updatedAt !== n.createdAt ? " · edited" : ""}</p>
+    </div>
+  `;
+}
+
+async function renderNotesTab(contactId) {
+  const c = await DB.get(contactId);
+  const notes = (c && c.notesList) || [];
+  const wrap = document.getElementById("detail-tab-notes");
+  wrap.innerHTML = `
+    <div style="padding:4px 16px 0">
+      <button type="button" class="btn-secondary" id="btn-add-note" style="padding:9px 16px;width:100%">+ Add note</button>
+    </div>
+    <div class="field-list" style="margin-top:10px">
+      ${notes.length === 0
+        ? `<div class="empty-state" style="padding:24px 16px"><p>No notes yet. Write one, or log a call — text or a short voice recording.</p></div>`
+        : notes.map((n) => renderNoteCardHTML(n)).join("")}
+    </div>
+  `;
+  document.getElementById("btn-add-note").addEventListener("click", () => openNoteForm(contactId, null));
+  wrap.querySelectorAll(".note-card").forEach((card) => {
+    card.addEventListener("click", () => openNoteForm(contactId, card.dataset.id));
+  });
+}
+
+// ---------------- Note editor (add/edit a note or call note) ----------------
+const MAX_CALL_NOTE_SECONDS = 300; // 5 minutes
+let noteFormContactId = null;
+let noteFormEditingId = null;
+let noteFormKind = "note"; // note | call
+let noteFormCallMedia = "text"; // text | voice
+let noteFormAudioDataUrl = "";
+let noteFormAudioDurationSec = 0;
+let recorderStream = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordTimerInterval = null;
+let recordStartTime = 0;
+
+async function openNoteForm(contactId, noteId) {
+  releaseRecordingResources();
+  noteFormContactId = contactId;
+  noteFormEditingId = noteId || null;
+  noteFormKind = "note";
+  noteFormCallMedia = "text";
+  noteFormAudioDataUrl = "";
+  noteFormAudioDurationSec = 0;
+  document.getElementById("note-title").value = "";
+  document.getElementById("note-text").value = "";
+  document.getElementById("note-delete-zone").style.display = noteId ? "block" : "none";
+
+  if (noteId) {
+    const c = await DB.get(contactId);
+    const n = (c.notesList || []).find((x) => x.id === noteId);
+    if (n) {
+      noteFormKind = n.kind || "note";
+      noteFormCallMedia = n.callMedia || "text";
+      noteFormAudioDataUrl = n.audioDataUrl || "";
+      noteFormAudioDurationSec = n.audioDurationSec || 0;
+      document.getElementById("note-title").value = n.title || "";
+      document.getElementById("note-text").value = n.text || "";
+    }
+  }
+  document.getElementById("note-form-title").textContent = noteId ? "Edit note" : "New note";
+  setNoteKind(noteFormKind);
+  setNoteCallMedia(noteFormCallMedia);
+  showScreen("screen-note-form");
+}
+
+function clearRecordedAudio() {
+  releaseRecordingResources();
+  noteFormAudioDataUrl = "";
+  noteFormAudioDurationSec = 0;
+}
+
+function setNoteKind(kind) {
+  if (kind !== "call") clearRecordedAudio();
+  noteFormKind = kind;
+  document.querySelectorAll("#note-type-toggle button").forEach((b) => b.classList.toggle("active", b.dataset.noteKind === kind));
+  document.getElementById("note-call-media-group").hidden = kind !== "call";
+  updateNoteFieldVisibility();
+  renderVoiceWidget();
+}
+
+function setNoteCallMedia(media) {
+  if (media !== "voice") clearRecordedAudio();
+  noteFormCallMedia = media;
+  document.querySelectorAll("#note-call-media-toggle button").forEach((b) => b.classList.toggle("active", b.dataset.callMedia === media));
+  updateNoteFieldVisibility();
+  renderVoiceWidget();
+}
+
+function updateNoteFieldVisibility() {
+  const isVoiceCall = noteFormKind === "call" && noteFormCallMedia === "voice";
+  document.getElementById("note-text-group").hidden = isVoiceCall;
+  document.getElementById("note-voice-group").hidden = !isVoiceCall;
+}
+
+function renderVoiceWidget() {
+  const wrap = document.getElementById("note-voice-widget");
+  if (!wrap) return;
+  if (noteFormAudioDataUrl) {
+    wrap.innerHTML = `
+      <audio controls src="${noteFormAudioDataUrl}" style="width:100%"></audio>
+      <p class="hint-text" style="margin:6px 0 10px">${fmtDuration(noteFormAudioDurationSec)} recording</p>
+      <button type="button" class="btn-secondary" id="btn-rerecord" style="padding:9px 16px">Re-record</button>
+    `;
+    document.getElementById("btn-rerecord").addEventListener("click", () => {
+      clearRecordedAudio();
+      renderVoiceWidget();
+    });
+  } else {
+    wrap.innerHTML = `
+      <div class="record-widget">
+        <button type="button" class="btn-secondary" id="btn-start-record" style="padding:9px 16px">● Record</button>
+        <span class="record-timer" id="record-timer" hidden>0:00</span>
+        <button type="button" class="btn-danger" id="btn-stop-record" style="padding:9px 16px;display:none">■ Stop</button>
+      </div>
+      <p class="hint-text" style="margin-top:8px">Max length 5:00 — recording stops automatically.</p>
+    `;
+    document.getElementById("btn-start-record").addEventListener("click", startVoiceRecording);
+    document.getElementById("btn-stop-record").addEventListener("click", stopVoiceRecording);
+  }
+}
+
+async function startVoiceRecording() {
+  if (!("MediaRecorder" in window) || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast("Voice recording isn't supported on this browser");
+    return;
+  }
+  try {
+    recorderStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    showToast("Microphone permission was denied");
+    return;
+  }
+  recordedChunks = [];
+  try {
+    mediaRecorder = new MediaRecorder(recorderStream);
+  } catch (e) {
+    showToast("Couldn't start recording on this browser");
+    return;
+  }
+  mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = onRecordingStopped;
+  mediaRecorder.start();
+  recordStartTime = Date.now();
+  const startBtn = document.getElementById("btn-start-record");
+  const stopBtn = document.getElementById("btn-stop-record");
+  const timerEl = document.getElementById("record-timer");
+  if (startBtn) startBtn.style.display = "none";
+  if (stopBtn) stopBtn.style.display = "";
+  if (timerEl) timerEl.hidden = false;
+  recordTimerInterval = setInterval(() => {
+    const elapsed = (Date.now() - recordStartTime) / 1000;
+    const t = document.getElementById("record-timer");
+    if (t) t.textContent = fmtDuration(elapsed);
+    if (elapsed >= MAX_CALL_NOTE_SECONDS) {
+      showToast("Max length reached (5:00)");
+      stopVoiceRecording();
+    }
+  }, 250);
+}
+
+function stopVoiceRecording() {
+  clearInterval(recordTimerInterval);
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    try { mediaRecorder.stop(); } catch (e) { /* already stopped */ }
+  }
+  if (recorderStream) {
+    recorderStream.getTracks().forEach((t) => t.stop());
+    recorderStream = null;
+  }
+}
+
+// Cleanup used when leaving the recorder without keeping the take (cancel,
+// switching away from voice mode, etc). Detaches onstop first so an
+// in-progress recording doesn't get silently saved as a note.
+function releaseRecordingResources() {
+  clearInterval(recordTimerInterval);
+  if (mediaRecorder) {
+    mediaRecorder.onstop = null;
+    if (mediaRecorder.state !== "inactive") {
+      try { mediaRecorder.stop(); } catch (e) { /* already stopped */ }
+    }
+  }
+  if (recorderStream) {
+    recorderStream.getTracks().forEach((t) => t.stop());
+    recorderStream = null;
+  }
+  mediaRecorder = null;
+}
+
+function onRecordingStopped() {
+  const durationSec = Math.min((Date.now() - recordStartTime) / 1000, MAX_CALL_NOTE_SECONDS);
+  const blob = new Blob(recordedChunks, { type: (mediaRecorder && mediaRecorder.mimeType) || "audio/webm" });
+  const reader = new FileReader();
+  reader.onload = () => {
+    noteFormAudioDataUrl = reader.result;
+    noteFormAudioDurationSec = durationSec;
+    renderVoiceWidget();
+  };
+  reader.readAsDataURL(blob);
+}
+
+async function saveNoteForm() {
+  const title = document.getElementById("note-title").value.trim();
+  const text = document.getElementById("note-text").value;
+  const isVoiceCall = noteFormKind === "call" && noteFormCallMedia === "voice";
+
+  if (isVoiceCall && !noteFormAudioDataUrl) {
+    showToast("Record a voice note, or switch to Text");
+    return;
+  }
+  if (!isVoiceCall && !title && !text.trim()) {
+    showToast("Add a title or some text");
+    return;
+  }
+
+  const patch = {
+    kind: noteFormKind,
+    title,
+    text: isVoiceCall ? "" : text,
+    callMedia: noteFormKind === "call" ? noteFormCallMedia : "",
+    audioDataUrl: isVoiceCall ? noteFormAudioDataUrl : "",
+    audioDurationSec: isVoiceCall ? noteFormAudioDurationSec : 0,
+  };
+
+  if (noteFormEditingId) {
+    await ContactNotes.update(noteFormContactId, noteFormEditingId, patch);
+    showToast("Note updated");
+  } else {
+    await ContactNotes.add(noteFormContactId, patch);
+    showToast(noteFormKind === "call" ? "Call note added" : "Note added");
+  }
+  closeScreen("screen-note-form");
+  await renderDetail();
+  await Contacts.refresh();
+}
+
+async function deleteNoteForm() {
+  if (!noteFormEditingId) return;
+  if (!confirm("Delete this note? This can't be undone.")) return;
+  await ContactNotes.remove(noteFormContactId, noteFormEditingId);
+  showToast("Note deleted");
+  closeScreen("screen-note-form");
+  await renderDetail();
 }
 
 function setDetailTab(tab) {
@@ -587,7 +844,7 @@ async function openForm(id) {
   formPhotoDataUrl = "";
   document.getElementById("form-title").textContent = id ? "Edit contact" : "New contact";
 
-  ["first", "last", "nickname", "company", "jobtitle", "birthday", "notes"].forEach((f) => {
+  ["first", "last", "nickname", "company", "jobtitle", "birthday"].forEach((f) => {
     const el = document.getElementById("f-" + f);
     if (el) el.value = "";
   });
@@ -608,7 +865,6 @@ async function openForm(id) {
       document.getElementById("f-company").value = c.company || "";
       document.getElementById("f-jobtitle").value = c.jobTitle || "";
       document.getElementById("f-birthday").value = c.birthday || "";
-      document.getElementById("f-notes").value = c.notes || "";
       formPhones = (c.phones || []).map((p) => ({ ...p }));
       formEmails = (c.emails || []).map((e) => ({ ...e }));
       formAddresses = (c.addresses || []).map((a) => ({ ...a }));
@@ -680,7 +936,6 @@ async function saveForm() {
     customFields: readCustomFieldsEditor("f-customfields"),
     photoDataUrl: formPhotoDataUrl,
     tags: formTagIds.slice(),
-    notes: document.getElementById("f-notes").value,
     category: formCategory,
   };
   if (!payload.firstName && !payload.lastName && !payload.company) {
