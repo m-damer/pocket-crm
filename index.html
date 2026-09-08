@@ -79,6 +79,14 @@
     <div class="list" id="schedule-list"></div>
   </section>
 
+  <!-- ===== ACTIVITY TAB (global feed across all contacts) ===== -->
+  <section class="view" id="view-activity" hidden>
+    <header class="header">
+      <h1 data-i18n="nav_activity">Activity</h1>
+    </header>
+    <div class="field-list" id="global-activity-list" style="padding-top:8px"></div>
+  </section>
+
   <!-- ===== MORE TAB ===== -->
   <section class="view" id="view-more" hidden>
     <header class="header"><h1 data-i18n="more_title">More</h1></header>
@@ -176,6 +184,10 @@
       </span>
       <span data-i18n="nav_schedule">Schedule</span>
     </button>
+    <button class="nav-item" data-tab="activity">
+      <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+      <span data-i18n="nav_activity">Activity</span>
+    </button>
     <button class="nav-item" data-tab="more">
       <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></span>
       <span data-i18n="nav_more">More</span>
@@ -188,6 +200,8 @@
       <button class="icon-btn icon-back" id="btn-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       <h1 data-i18n="detail_title">Contact</h1>
       <button class="icon-btn" id="btn-detail-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
+      <button class="icon-btn" id="btn-detail-save-to-phone" title="Save to phone" data-i18n-title="qa_save_to_phone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/><path d="M12 7v6"/><path d="M9 10l3 3 3-3"/></svg></button>
+      <button class="icon-btn" id="btn-delete-contact" style="color:#F3C9C9" title="Delete contact" data-i18n-title="btn_delete_contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
     </header>
     <div class="view">
       <div class="detail-hero" id="detail-hero"></div>
@@ -202,7 +216,6 @@
       <div id="detail-tab-activity" hidden></div>
       <div id="detail-tab-notes" hidden></div>
       <div id="detail-tab-docs" hidden></div>
-      <div class="danger-zone"><button class="btn-danger" id="btn-delete-contact" data-i18n="btn_delete_contact">Delete contact</button></div>
     </div>
   </div>
 
@@ -545,6 +558,18 @@
   </div>
 
   <div class="toast" id="toast"></div>
+
+  <!-- ===== Reusable bottom sheet: expanded note / call-note view ===== -->
+  <div class="bottom-sheet-backdrop" id="note-sheet-backdrop" hidden></div>
+  <div class="bottom-sheet" id="note-sheet" hidden>
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <h3 id="note-sheet-title"></h3>
+      <button class="icon-btn" id="btn-note-sheet-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+    </div>
+    <p class="bottom-sheet-date" id="note-sheet-date"></p>
+    <div class="bottom-sheet-body" id="note-sheet-body"></div>
+  </div>
 
 </div>
 

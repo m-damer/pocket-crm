@@ -92,6 +92,9 @@ input, select, textarea { font-family: inherit; }
 /* ---------- Main content area ---------- */
 .view {
   flex: 1;
+  min-height: 0; /* without this, a flex item won't actually respect overflow-y:auto
+                    and instead grows to fit its content, pushing everything after it
+                    (the bottom nav) down past the viewport — this is what was happening */
   overflow-y: auto;
   padding-bottom: calc(var(--nav-h) + 12px);
   -webkit-overflow-scrolling: touch;
@@ -210,8 +213,13 @@ input, select, textarea { font-family: inherit; }
 
 /* ---------- Bottom nav ---------- */
 .bottom-nav {
-  position: sticky;
+  position: fixed; /* fixed (not sticky) so it's always pinned to the viewport bottom,
+                       independent of any scroll/flex quirks in ancestors */
+  left: 50%;
+  transform: translateX(-50%);
   bottom: 0;
+  width: 100%;
+  max-width: 480px; /* matches .app's centering so this lines up on wider viewports too */
   height: var(--nav-h);
   background: var(--surface);
   border-top: 1px solid var(--border);
@@ -264,9 +272,29 @@ input, select, textarea { font-family: inherit; }
   color: #fff;
   padding: 18px 20px 22px;
 }
-.detail-hero .avatar { width: 56px; height: 56px; font-size: 19px; margin-bottom: 10px; }
+.detail-hero .avatar { width: 56px; height: 56px; font-size: 19px; margin-bottom: 10px; flex-shrink: 0; }
 .detail-hero h2 { margin: 0 0 3px; font-size: 20px; }
 .detail-hero p { margin: 0; opacity: 0.85; font-size: 13.5px; }
+.hero-top { display: flex; align-items: flex-start; gap: 12px; }
+.hero-name-block { flex: 1; min-width: 0; padding-top: 2px; }
+.hero-badge {
+  display: inline-block; margin-top: 6px;
+  background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 11.5px; font-weight: 650; padding: 3px 10px; border-radius: 999px;
+}
+.hero-address {
+  display: flex; align-items: center; gap: 8px; margin-top: 14px;
+  font-size: 13.5px; opacity: 0.92;
+}
+.hero-address svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.85; }
+.hero-directions-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 10px; padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff; border-radius: 999px; font-size: 12.5px; font-weight: 650;
+  text-decoration: none; cursor: pointer;
+}
+.hero-directions-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
 
 .quick-actions {
   display: flex;
@@ -338,8 +366,42 @@ input, select, textarea { font-family: inherit; }
   margin-bottom: 8px;
   box-shadow: var(--elevation-1);
 }
-.activity-item .when { font-size: 11.5px; color: var(--text-muted); margin: 0 0 3px; }
+.activity-item .when { font-size: 11.5px; color: var(--text-muted); margin: 0 0 3px; font-variant-numeric: tabular-nums; }
 .activity-item .what { font-size: 14px; margin: 0; }
+.activity-item .activity-contact-name { font-size: 12px; font-weight: 700; color: var(--blue); margin: 0 0 3px; }
+.activity-item .activity-note-title { font-size: 13.5px; font-weight: 650; margin: 6px 0 0; }
+.activity-item .activity-note-preview { font-size: 13.5px; color: var(--text); margin: 3px 0 0; white-space: pre-wrap; word-break: break-word; }
+.activity-expand-btn {
+  border: none; background: none; color: var(--blue); font-size: 12.5px; font-weight: 650;
+  padding: 6px 0 0; cursor: pointer; text-align: start;
+}
+.activity-audio { width: 100%; margin-top: 8px; height: 34px; }
+
+/* ---------- Bottom sheet (expanded note view) ---------- */
+.bottom-sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(10, 20, 16, 0.45);
+  z-index: 70; opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+}
+.bottom-sheet-backdrop.show { opacity: 1; pointer-events: auto; }
+.bottom-sheet {
+  position: fixed; left: 50%; bottom: 0;
+  transform: translateX(-50%) translateY(100%);
+  width: 100%; max-width: 480px; max-height: 75vh;
+  background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -6px 24px rgba(10, 40, 30, 0.18);
+  z-index: 71;
+  display: flex; flex-direction: column;
+  padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  transition: transform 0.25s ease;
+}
+.bottom-sheet.show { transform: translateX(-50%) translateY(0); }
+.bottom-sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 999px; margin: 6px auto 12px; flex-shrink: 0; }
+.bottom-sheet-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0; }
+.bottom-sheet-header h3 { margin: 0; font-size: 17px; }
+.bottom-sheet-date { font-size: 12px; color: var(--text-muted); margin: 4px 0 14px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.bottom-sheet-body { overflow-y: auto; font-size: 14.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; -webkit-overflow-scrolling: touch; }
+.bottom-sheet-body audio { width: 100%; margin-top: 4px; }
 
 .notes-box {
   margin: 4px 16px;
@@ -919,3 +981,13 @@ input, select, textarea { font-family: inherit; }
 
 [dir="rtl"] .empty-state,
 [dir="rtl"] .qa-btn.disabled { text-align: center; } /* unaffected, kept centered in both directions */
+
+/* The numeric activity date (31/12/2026 - 10:15 AM) is built by hand, not
+   via Intl, so it has no inherent bidi awareness — without this, the RTL
+   context reorders it visually (e.g. "AM 10:15 -" first). Force it back to
+   a left-to-right run, right-aligned to match the rest of the RTL card. */
+[dir="rtl"] .activity-item .when {
+  direction: ltr;
+  text-align: right;
+  unicode-bidi: isolate;
+}

@@ -7,6 +7,7 @@ const I18N_DICT = {
     // Bottom nav / tab titles
     nav_contacts: "Contacts",
     nav_schedule: "Schedule",
+    nav_activity: "Activity",
     nav_more: "More",
 
     // Contacts tab
@@ -360,11 +361,17 @@ const I18N_DICT = {
     csv_header_activity: "Activity",
     csv_header_tag: "Tag",
     csv_header_category: "Category",
-  },
 
+    // Activity cards, bottom sheet, global feed (this update)
+    btn_read_more: "Read more",
+    label_modified: "Modified",
+    empty_no_global_activity: "No activity yet",
+    empty_no_global_activity_hint: "Everything you do across your contacts — notes, calls, edits — will show up here.",
+  },
   ar: {
     nav_contacts: "\u062c\u0647\u0627\u062a \u0627\u0644\u0627\u062a\u0635\u0627\u0644",
     nav_schedule: "\u0627\u0644\u062c\u062f\u0648\u0644\u0629",
+    nav_activity: "\u0627\u0644\u0646\u0634\u0627\u0637",
     nav_more: "\u0627\u0644\u0645\u0632\u064a\u062f",
 
     contacts_title: "\u062c\u0647\u0627\u062a \u0627\u0644\u0627\u062a\u0635\u0627\u0644",
@@ -702,6 +709,11 @@ const I18N_DICT = {
     csv_header_activity: "\u0627\u0644\u0646\u0634\u0627\u0637",
     csv_header_tag: "\u0627\u0644\u0648\u0633\u0645",
     csv_header_category: "\u0627\u0644\u0641\u0626\u0629",
+
+    btn_read_more: "\u0627\u0642\u0631\u0623 \u0627\u0644\u0645\u0632\u064a\u062f",
+    label_modified: "\u0622\u062e\u0631 \u062a\u0639\u062f\u064a\u0644",
+    empty_no_global_activity: "\u0644\u0627 \u064a\u0648\u062c\u062f \u0646\u0634\u0627\u0637 \u0628\u0639\u062f",
+    empty_no_global_activity_hint: "\u0643\u0644 \u0634\u064a \u062a\u0633\u0648\u064a\u0647 \u0639\u0628\u0631 \u062c\u0647\u0627\u062a\u0643 \u2014 \u0645\u0644\u0627\u062d\u0638\u0627\u062a\u060c \u0645\u0643\u0627\u0644\u0645\u0627\u062a\u060c \u062a\u0639\u062f\u064a\u0644\u0627\u062a \u2014 \u0631\u0627\u062d \u064a\u0638\u0647\u0631 \u0647\u0648\u0646.",
   },
 };
 

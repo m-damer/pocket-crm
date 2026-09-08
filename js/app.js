@@ -2,6 +2,7 @@
 const TAB_VIEWS = {
   contacts: "view-contacts",
   schedule: "view-schedule",
+  activity: "view-activity",
   more: "view-more",
 };
 
@@ -20,6 +21,7 @@ function switchTab(tab) {
   const fab = document.getElementById("fab-add");
   fab.style.display = FAB_ACTIONS[tab] ? "flex" : "none";
   fab.onclick = FAB_ACTIONS[tab] || null;
+  if (tab === "activity") renderGlobalActivityFeed();
 }
 
 document.querySelectorAll(".nav-item").forEach((btn) => {
@@ -55,6 +57,10 @@ document.getElementById("btn-form-cancel-2").addEventListener("click", closeAllS
 document.getElementById("btn-form-save").addEventListener("click", saveForm);
 document.getElementById("btn-delete-contact").addEventListener("click", deleteCurrentContact);
 document.getElementById("btn-detail-edit").addEventListener("click", () => openForm(Contacts.currentId));
+document.getElementById("btn-detail-save-to-phone").addEventListener("click", () => saveContactToPhone(Contacts.currentId));
+
+document.getElementById("btn-note-sheet-close").addEventListener("click", closeNoteSheet);
+document.getElementById("note-sheet-backdrop").addEventListener("click", closeNoteSheet);
 
 document.querySelectorAll("#screen-detail .tab-btn").forEach((b) => {
   b.addEventListener("click", () => setDetailTab(b.dataset.dtab));

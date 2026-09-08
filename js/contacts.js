@@ -60,6 +60,23 @@ function fmtDate(iso) {
     " · " + d.toLocaleTimeString(I18N.localeTag(), { hour: "2-digit", minute: "2-digit" });
 }
 
+// All-numeric date format for the Activity sections specifically, e.g.
+// "31/12/2026 - 10:15 AM" — day/month/year with no locale-dependent month
+// names, since a running activity log reads better scanned as fixed-width
+// numbers than in prose form.
+function fmtDateNumeric(iso) {
+  const d = new Date(iso);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  return `${day}/${month}/${year} - ${hours}:${minutes} ${ampm}`;
+}
+
 function fmtBirthday(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-").map(Number);
@@ -183,8 +200,10 @@ function renderFieldGroupHTML(key, c) {
     case "nickname":
       return c.nickname ? `<div class="field-row"><p class="label">${t("field_nickname")}</p><p class="value">${escapeHTML(c.nickname)}</p></div>` : "";
     case "companyJobTitle":
-      if (!c.company && !c.jobTitle) return "";
-      return `<div class="field-row"><p class="label">${t("field_company")}</p><p class="value">${escapeHTML([c.jobTitle, c.company].filter(Boolean).join(" · ") || "—")}</p></div>`;
+      // Company is shown in the hero now, right under the name — only Job
+      // title still belongs in the field list, to avoid showing company twice.
+      if (!c.jobTitle) return "";
+      return `<div class="field-row"><p class="label">${t("field_job_title")}</p><p class="value">${escapeHTML(c.jobTitle)}</p></div>`;
     case "phones":
       return (c.phones || []).map((p) => `
         <div class="field-row"><p class="label">${phoneEmailLabel(p.label)}</p><p class="value">${escapeHTML(p.value)}</p></div>
@@ -225,26 +244,33 @@ async function renderInfoTab(c) {
     .map((f) => renderFieldGroupHTML(f.key, c))
     .join("");
 
-  return `
-    <div class="field-list">
-      <div class="field-row"><p class="label">${t("label_category")}</p><p class="value">${catLabel(c.category)}</p></div>
-      ${groupsHTML}
-      ${c.tags && c.tags.length ? `<div class="field-row"><p class="label">${t("label_tags")}</p><div class="tag-row">${c.tags.map((tid) => {
+  const tagsHTML = c.tags && c.tags.length
+    ? `<div class="field-row"><p class="label">${t("label_tags")}</p><div class="tag-row">${c.tags.map((tid) => {
         const t2 = allTags.find((x) => x.id === tid);
         return t2 ? `<span class="tag" style="background:${t2.color};color:#fff">${escapeHTML(t2.name)}</span>` : "";
-      }).join("")}</div></div>` : ""}
-      <div class="field-row"><p class="label">${t("label_added")}</p><p class="value">${fmtDate(c.createdAt)}</p></div>
-    </div>
+      }).join("")}</div></div>`
+    : "";
+
+  // Upcoming events lead the tab (right under the quick actions), then tags
+  // (first in the list, ahead of phone/email/etc.), then the rest, then
+  // Added/Modified at the very end.
+  return `
     ${await renderLinkedEvents(c.id)}
+    <div class="field-list">
+      ${tagsHTML}
+      ${groupsHTML}
+      <div class="field-row"><p class="label">${t("label_added")}</p><p class="value">${fmtDate(c.createdAt)}</p></div>
+      <div class="field-row"><p class="label">${t("label_modified")}</p><p class="value">${fmtDate(c.updatedAt)}</p></div>
+    </div>
   `;
 }
 
 // ---------------- Detail screen ----------------
 let detailTab = "info";
 
-async function openDetail(id) {
+async function openDetail(id, tab) {
   Contacts.currentId = id;
-  detailTab = "info";
+  detailTab = tab || "info";
   await renderDetail();
   showScreen("screen-detail");
 }
@@ -253,16 +279,33 @@ async function renderDetail() {
   const c = await DB.get(Contacts.currentId);
   if (!c) return;
 
+  const addr = primaryAddress(c);
   document.getElementById("detail-hero").innerHTML = `
-    ${c.photoDataUrl
-      ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover;width:56px;height:56px" />`
-      : `<div class="avatar" style="background:rgba(255,255,255,0.18)">${initials(c)}</div>`}
-    <h2>${escapeHTML(fullName(c))}${c.nickname ? ` <span style="opacity:0.75;font-weight:400">"${escapeHTML(c.nickname)}"</span>` : ""}</h2>
-    <p>${escapeHTML(c.jobTitle && c.company ? `${c.jobTitle} · ${c.company}` : (c.company || catLabel(c.category)))}</p>
+    <div class="hero-top">
+      ${c.photoDataUrl
+        ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover;width:56px;height:56px" />`
+        : `<div class="avatar" style="background:rgba(255,255,255,0.18)">${initials(c)}</div>`}
+      <div class="hero-name-block">
+        <h2>${escapeHTML(fullName(c))}${c.nickname ? ` <span style="opacity:0.75;font-weight:400">"${escapeHTML(c.nickname)}"</span>` : ""}</h2>
+        ${c.jobTitle || c.company ? `<p>${escapeHTML([c.jobTitle, c.company].filter(Boolean).join(" · "))}</p>` : ""}
+        <span class="badge hero-badge">${catLabel(c.category)}</span>
+      </div>
+    </div>
+    ${addr ? `
+      <div class="hero-address">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>${escapeHTML(addr.value)}</span>
+      </div>
+      ${addr.mapsLink ? `
+        <a class="hero-directions-btn" target="_blank" rel="noopener" href="${escapeHTML(addr.mapsLink)}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+          ${t("qa_directions")}
+        </a>
+      ` : ""}
+    ` : ""}
   `;
 
-  const phone = primaryPhone(c), email = primaryEmail(c), addr = primaryAddress(c);
-  const mapsHref = addr ? (addr.mapsLink || "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(addr.value)) : "#";
+  const phone = primaryPhone(c), email = primaryEmail(c);
   document.getElementById("detail-qa").innerHTML = `
     <a class="qa-btn ${phone ? "" : "disabled"}" href="${phone ? "tel:" + phone : "#"}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.8 19.8 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
@@ -276,36 +319,175 @@ async function renderDetail() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
       ${t("qa_email")}
     </a>
-    <a class="qa-btn ${addr ? "" : "disabled"}" target="_blank" rel="noopener" href="${mapsHref}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-      ${t("qa_directions")}
-    </a>
-    <button type="button" class="qa-btn" id="btn-save-to-phone">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg>
-      ${t("qa_save_to_phone")}
-    </button>
   `;
-  document.getElementById("btn-save-to-phone").addEventListener("click", () => saveContactToPhone(c.id));
 
   document.getElementById("detail-tab-info").innerHTML = await renderInfoTab(c);
 
-  const activities = c.activities || [];
-  document.getElementById("detail-tab-activity").innerHTML = `
-    <div class="field-list">
-      ${activities.length === 0
-        ? `<div class="empty-state" style="padding:32px 16px"><p>${t("empty_no_activity")}</p></div>`
-        : activities.map((a) => `
-          <div class="activity-item">
-            <p class="when">${fmtDate(a.date)}</p>
-            <p class="what">${escapeHTML(a.text || "")}</p>
-          </div>`).join("")}
-    </div>
-  `;
+  renderActivityTab(c);
 
   await renderNotesTab(c.id);
 
   setDetailTab(detailTab);
   await renderDocsTab(c.id);
+}
+
+// ---------------- Activity cards (rich: note/call content inline, expandable) ----------------
+const ACTIVITY_PREVIEW_LIMIT = 160;
+
+function saveAudioPosition(key, time) {
+  try { localStorage.setItem("audio-pos-" + key, String(time)); } catch (e) { /* storage unavailable — resume just won't work */ }
+}
+function loadAudioPosition(key) {
+  try { return parseFloat(localStorage.getItem("audio-pos-" + key) || "0") || 0; } catch (e) { return 0; }
+}
+
+// Wires an <audio> element to remember and restore its playback position,
+// keyed by the activity entry's own id, so re-opening the app (or just
+// scrolling away and back) resumes a long voice note where you left off.
+function wireAudioResume(audioEl, key) {
+  audioEl.addEventListener("loadedmetadata", () => {
+    const saved = loadAudioPosition(key);
+    if (saved > 0 && saved < audioEl.duration - 1) audioEl.currentTime = saved;
+  });
+  let lastSaved = 0;
+  audioEl.addEventListener("timeupdate", () => {
+    if (Math.abs(audioEl.currentTime - lastSaved) < 2) return; // throttle writes to ~every 2s
+    lastSaved = audioEl.currentTime;
+    saveAudioPosition(key, audioEl.currentTime);
+  });
+  audioEl.addEventListener("pause", () => saveAudioPosition(key, audioEl.currentTime));
+  audioEl.addEventListener("ended", () => saveAudioPosition(key, 0));
+}
+
+function renderActivityCardHTML(a, opts) {
+  opts = opts || {};
+  const isVoice = a.noteKind === "call" && a.callMedia === "voice" && a.audioDataUrl;
+  const fullText = a.noteText || "";
+  const isLong = fullText.length > ACTIVITY_PREVIEW_LIMIT;
+  const previewText = isLong ? fullText.slice(0, ACTIVITY_PREVIEW_LIMIT).trim() + "\u2026" : fullText;
+
+  return `
+    <div class="activity-item" data-activity-id="${a.id}">
+      ${opts.contactName ? `<p class="activity-contact-name">${escapeHTML(opts.contactName)}</p>` : ""}
+      <p class="when">${fmtDateNumeric(a.date)}</p>
+      <p class="what">${escapeHTML(a.text || "")}</p>
+      ${a.noteTitle ? `<p class="activity-note-title">${escapeHTML(a.noteTitle)}</p>` : ""}
+      ${fullText ? `<p class="activity-note-preview">${escapeHTML(previewText)}</p>` : ""}
+      ${isLong ? `<button type="button" class="activity-expand-btn" data-expand-id="${a.id}">${t("btn_read_more")}</button>` : ""}
+      ${isVoice ? `<audio class="activity-audio" controls preload="metadata" data-audio-key="${a.id}" src="${a.audioDataUrl}"></audio>` : ""}
+    </div>
+  `;
+}
+
+// Wires the "read more" buttons and audio players inside a just-rendered
+// batch of activity cards. `lookup(id)` returns the full activity entry for
+// a given id (source differs between the per-contact tab and global feed).
+function wireActivityCards(container, lookup) {
+  container.querySelectorAll(".activity-expand-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const a = lookup(btn.dataset.expandId);
+      if (!a) return;
+      openNoteSheet({
+        title: a.noteTitle || (a.noteKind === "call" ? t("note_title_fallback_call") : t("note_title_fallback_note")),
+        date: fmtDateNumeric(a.date),
+        text: a.noteText || "",
+        audioDataUrl: a.noteKind === "call" && a.callMedia === "voice" ? a.audioDataUrl : "",
+        audioKey: a.id,
+      });
+    });
+  });
+  container.querySelectorAll(".activity-audio").forEach((audioEl) => {
+    wireAudioResume(audioEl, audioEl.dataset.audioKey);
+  });
+}
+
+function renderActivityTab(c) {
+  const activities = c.activities || [];
+  const wrap = document.getElementById("detail-tab-activity");
+  wrap.innerHTML = `
+    <div class="field-list">
+      ${activities.length === 0
+        ? `<div class="empty-state" style="padding:32px 16px"><p>${t("empty_no_activity")}</p></div>`
+        : activities.map((a) => renderActivityCardHTML(a)).join("")}
+    </div>
+  `;
+  wireActivityCards(wrap, (id) => activities.find((a) => a.id === id));
+}
+
+// ---------------- Bottom sheet: expanded note / call-note view ----------------
+let noteSheetHideTimer = null;
+
+function openNoteSheet({ title, date, text, audioDataUrl, audioKey }) {
+  document.getElementById("note-sheet-title").textContent = title || "";
+  document.getElementById("note-sheet-date").textContent = date || "";
+  const body = document.getElementById("note-sheet-body");
+  body.innerHTML = `
+    ${text ? `<p style="margin:0 0 ${audioDataUrl ? "14px" : "0"}">${escapeHTML(text)}</p>` : ""}
+    ${audioDataUrl ? `<audio controls preload="metadata" data-audio-key="${audioKey}-sheet" src="${audioDataUrl}"></audio>` : ""}
+  `;
+  if (audioDataUrl) wireAudioResume(body.querySelector("audio"), audioKey + "-sheet");
+
+  const backdrop = document.getElementById("note-sheet-backdrop");
+  const sheet = document.getElementById("note-sheet");
+  clearTimeout(noteSheetHideTimer);
+  backdrop.hidden = false;
+  sheet.hidden = false;
+  requestAnimationFrame(() => {
+    backdrop.classList.add("show");
+    sheet.classList.add("show");
+  });
+}
+
+function closeNoteSheet() {
+  const backdrop = document.getElementById("note-sheet-backdrop");
+  const sheet = document.getElementById("note-sheet");
+  backdrop.classList.remove("show");
+  sheet.classList.remove("show");
+  clearTimeout(noteSheetHideTimer);
+  noteSheetHideTimer = setTimeout(() => {
+    backdrop.hidden = true;
+    sheet.hidden = true;
+  }, 250);
+}
+
+// ---------------- Global activity feed (across every contact) ----------------
+// Reads fresh from the database rather than the Contacts.all cache — note/
+// call actions don't currently trigger a Contacts.refresh() (nothing else
+// needed them to), so relying on the cache here would show stale activity
+// right after adding a note until something unrelated happened to refresh it.
+async function allActivitiesFlat() {
+  const all = await DB.getAll();
+  const out = [];
+  all.forEach((c) => {
+    (c.activities || []).forEach((a) => {
+      out.push({ ...a, contactId: c.id, contactName: fullName(c) });
+    });
+  });
+  out.sort((a, b) => b.date.localeCompare(a.date));
+  return out;
+}
+
+async function renderGlobalActivityFeed() {
+  const wrap = document.getElementById("global-activity-list");
+  const all = await allActivitiesFlat();
+  if (all.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <h3>${t("empty_no_global_activity")}</h3>
+        <p>${t("empty_no_global_activity_hint")}</p>
+      </div>`;
+    return;
+  }
+  wrap.innerHTML = all.map((a) => renderActivityCardHTML(a, { contactName: a.contactName })).join("");
+  wireActivityCards(wrap, (id) => all.find((a) => a.id === id));
+  wrap.querySelectorAll(".activity-item").forEach((card, idx) => {
+    card.style.cursor = "pointer";
+    card.addEventListener("click", (ev) => {
+      if (ev.target.closest(".activity-audio") || ev.target.closest(".activity-expand-btn")) return;
+      openDetail(all[idx].contactId, "activity");
+    });
+  });
 }
 
 async function renderDocsTab(contactId) {

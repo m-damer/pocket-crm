@@ -573,7 +573,12 @@ const ContactNotes = {
     };
     const notesList = [entry, ...(c.notesList || [])];
     const activities = [
-      { id: uid("a"), date: now, type: entry.kind === "call" ? "call_note_added" : "note_added", text: describeNoteActivity(entry, "added") },
+      {
+        id: uid("a"), date: now, type: entry.kind === "call" ? "call_note_added" : "note_added",
+        text: describeNoteActivity(entry, "added"),
+        noteId: entry.id, noteKind: entry.kind, noteTitle: entry.title, noteText: entry.text,
+        callMedia: entry.callMedia, audioDataUrl: entry.audioDataUrl, audioDurationSec: entry.audioDurationSec,
+      },
       ...(c.activities || []),
     ];
     await DB.update(contactId, { notesList, activities });
@@ -592,7 +597,12 @@ const ContactNotes = {
     });
     if (!updatedEntry) return;
     const activities = [
-      { id: uid("a"), date: now, type: updatedEntry.kind === "call" ? "call_note_edited" : "note_edited", text: describeNoteActivity(updatedEntry, "edited") },
+      {
+        id: uid("a"), date: now, type: updatedEntry.kind === "call" ? "call_note_edited" : "note_edited",
+        text: describeNoteActivity(updatedEntry, "edited"),
+        noteId: updatedEntry.id, noteKind: updatedEntry.kind, noteTitle: updatedEntry.title, noteText: updatedEntry.text,
+        callMedia: updatedEntry.callMedia, audioDataUrl: updatedEntry.audioDataUrl, audioDurationSec: updatedEntry.audioDurationSec,
+      },
       ...(c.activities || []),
     ];
     await DB.update(contactId, { notesList, activities });
@@ -606,7 +616,12 @@ const ContactNotes = {
     const notesList = (c.notesList || []).filter((n) => n.id !== noteId);
     const now = new Date().toISOString();
     const activities = [
-      { id: uid("a"), date: now, type: removed.kind === "call" ? "call_note_deleted" : "note_deleted", text: describeNoteActivity(removed, "deleted") },
+      {
+        id: uid("a"), date: now, type: removed.kind === "call" ? "call_note_deleted" : "note_deleted",
+        text: describeNoteActivity(removed, "deleted"),
+        noteId: removed.id, noteKind: removed.kind, noteTitle: removed.title, noteText: removed.text,
+        callMedia: removed.callMedia, audioDataUrl: removed.audioDataUrl, audioDurationSec: removed.audioDurationSec,
+      },
       ...(c.activities || []),
     ];
     await DB.update(contactId, { notesList, activities });

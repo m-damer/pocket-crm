@@ -2,6 +2,16 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
+## UI/UX polish pass (this update)
+- **Bottom nav fixed for good**: found and fixed the real bug behind the nav sinking below the screen on the More tab — a classic flexbox issue (`.view` needs `min-height: 0` to actually respect `overflow-y: auto` instead of growing past the viewport). The nav is now `position: fixed`, always pinned.
+- **New Activity tab** (4th bottom-nav icon): a running feed of everything across every contact — notes, calls, edits — newest first, tap any entry to jump straight to that contact's own Activity tab.
+- **Contact header restructured**: Edit, Save-to-phone, and Delete (trash icon, with its confirmation warning intact) now live together at the top.
+- **Hero redesigned**: category badge next to the name; address shown as icon + text with a Directions button underneath that links only to the Google Maps link you actually entered (no generic fallback search).
+- **Quick actions trimmed** to Call / WhatsApp / Email.
+- **Info tab reordered**: Upcoming events lead, Tags moved above phone numbers, the redundant Company row removed (Job title kept), Modified date added under Added date.
+- **Richer activity cards**: a note's actual content now shows in its activity card — full text if short, a "Read more" bottom sheet if long, with the note's title and date. Voice notes get an inline audio player that remembers your playback position between visits.
+- **Numeric date format** (`31/12/2026 - 10:15 AM`) in the Activity sections, with correct left-to-right number ordering even in the Arabic/RTL layout (a real bidi rendering bug, caught and fixed while testing this in Arabic).
+
 ## Visual redesign — Material 3, emerald brand (this update)
 - New brand color: **emerald/jade green** (`#10845D` primary, `#115F45` deep, `#D7F4EA` soft tint) — deliberately distinct from the blue/purple most CRMs use
 - Full Material 3 styling pass across every screen: pill-shaped buttons (filled primary / outlined secondary), tonal (soft-background) chips and tabs instead of solid-fill, soft elevation shadows on list cards, a rounded floating search bar, and a proper Material nav-bar pill indicator behind the active tab icon
