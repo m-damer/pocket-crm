@@ -131,6 +131,33 @@ input, select, textarea { font-family: inherit; }
   overflow-x: auto;
   padding-bottom: 2px;
 }
+
+/* ---------- Calendar month view (Schedule tab) ---------- */
+.calendar { padding: 10px 16px 4px; }
+.calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.calendar-month-label { margin: 0; font-size: 15px; font-weight: 700; }
+.calendar-weekdays {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  text-align: center; font-size: 11px; font-weight: 650; color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.calendar-day {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999px; border: none; background: none;
+  font-size: 13px; font-weight: 550; color: var(--text);
+  cursor: pointer;
+}
+.calendar-day.other-month { color: var(--text-muted); opacity: 0.4; }
+.calendar-day.today { font-weight: 800; color: var(--blue); }
+.calendar-day.selected { background: var(--blue); color: #fff; }
+.calendar-day .cal-dot {
+  position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--blue);
+}
+.calendar-day.selected .cal-dot { background: #fff; }
 .chip {
   border: 1px solid var(--border);
   background: var(--surface);
@@ -208,6 +235,9 @@ input, select, textarea { font-family: inherit; }
   cursor: pointer;
   z-index: 15;
 }
+/* On a full-screen overlay (like the contact detail screen), there's no
+   bottom nav to leave room for, so this sits closer to the edge. */
+.screen-fab { bottom: 20px; }
 .fab svg { width: 26px; height: 26px; }
 .fab:active { background: #0D6C4C; }
 
@@ -277,19 +307,26 @@ input, select, textarea { font-family: inherit; }
 .detail-hero p { margin: 0; opacity: 0.85; font-size: 13.5px; }
 .hero-top { display: flex; align-items: flex-start; gap: 12px; }
 .hero-name-block { flex: 1; min-width: 0; padding-top: 2px; }
+.hero-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hero-name-row h2 { margin: 0; }
 .hero-badge {
-  display: inline-block; margin-top: 6px;
+  display: inline-block;
   background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.35);
-  font-size: 11.5px; font-weight: 650; padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 650; padding: 3px 10px; border-radius: 999px; flex-shrink: 0;
 }
-.hero-address {
-  display: flex; align-items: center; gap: 8px; margin-top: 14px;
+.hero-nickname { margin: 3px 0 0; font-size: 13px; opacity: 0.75; font-style: italic; }
+.hero-tags { margin-top: 8px; }
+.hero-address-row {
+  display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap;
+}
+.hero-address-text {
+  display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 120px;
   font-size: 13.5px; opacity: 0.92;
 }
-.hero-address svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.85; }
+.hero-address-text svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.85; }
 .hero-directions-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  margin-top: 10px; padding: 8px 14px;
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 8px 14px;
   background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff; border-radius: 999px; font-size: 12.5px; font-weight: 650;
   text-decoration: none; cursor: pointer;
@@ -366,11 +403,16 @@ input, select, textarea { font-family: inherit; }
   margin-bottom: 8px;
   box-shadow: var(--elevation-1);
 }
-.activity-item .when { font-size: 11.5px; color: var(--text-muted); margin: 0 0 3px; font-variant-numeric: tabular-nums; }
-.activity-item .what { font-size: 14px; margin: 0; }
-.activity-item .activity-contact-name { font-size: 12px; font-weight: 700; color: var(--blue); margin: 0 0 3px; }
-.activity-item .activity-note-title { font-size: 13.5px; font-weight: 650; margin: 6px 0 0; }
-.activity-item .activity-note-preview { font-size: 13.5px; color: var(--text); margin: 3px 0 0; white-space: pre-wrap; word-break: break-word; }
+.activity-item .when { font-size: 11px; color: var(--text-muted); margin: 8px 0 0; text-align: right; font-variant-numeric: tabular-nums; }
+.activity-item .activity-contact-name { font-size: 12px; font-weight: 700; color: var(--blue); margin: 0 0 6px; }
+.activity-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.activity-card-title { font-size: 14px; font-weight: 650; margin: 0; flex: 1; min-width: 0; }
+.activity-type-badge {
+  flex-shrink: 0; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em;
+  background: var(--blue-soft); color: var(--on-primary-soft); padding: 3px 8px; border-radius: 999px;
+  white-space: nowrap;
+}
+.activity-item .activity-note-preview { font-size: 13.5px; color: var(--text); margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; }
 .activity-expand-btn {
   border: none; background: none; color: var(--blue); font-size: 12.5px; font-weight: 650;
   padding: 6px 0 0; cursor: pointer; text-align: start;
@@ -402,6 +444,22 @@ input, select, textarea { font-family: inherit; }
 .bottom-sheet-date { font-size: 12px; color: var(--text-muted); margin: 4px 0 14px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .bottom-sheet-body { overflow-y: auto; font-size: 14.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; -webkit-overflow-scrolling: touch; }
 .bottom-sheet-body audio { width: 100%; margin-top: 4px; }
+
+.activity-menu-list { white-space: normal; }
+.activity-menu-row {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  padding: 13px 4px; border: none; background: none; cursor: pointer;
+  font-size: 15px; font-weight: 550; color: var(--text);
+  border-bottom: 1px solid var(--border); text-align: start;
+}
+.activity-menu-row:last-child { border-bottom: none; }
+.activity-menu-row:active { background: var(--blue-soft); }
+.activity-menu-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 999px; flex-shrink: 0;
+  background: var(--blue-soft); color: var(--blue);
+}
+.activity-menu-icon svg { width: 19px; height: 19px; }
 
 .notes-box {
   margin: 4px 16px;
@@ -979,6 +1037,10 @@ input, select, textarea { font-family: inherit; }
    action visually sits once the header row itself has reversed. */
 [dir="rtl"] .icon-back svg { transform: scaleX(-1); }
 
+/* Calendar prev/next chevrons: the header row already reverses via flexbox
+   in RTL, so mirror the glyphs too, matching the icon-back treatment above. */
+[dir="rtl"] .calendar-header svg { transform: scaleX(-1); }
+
 [dir="rtl"] .empty-state,
 [dir="rtl"] .qa-btn.disabled { text-align: center; } /* unaffected, kept centered in both directions */
 
@@ -986,8 +1048,12 @@ input, select, textarea { font-family: inherit; }
    via Intl, so it has no inherent bidi awareness — without this, the RTL
    context reorders it visually (e.g. "AM 10:15 -" first). Force it back to
    a left-to-right run, right-aligned to match the rest of the RTL card. */
+/* The date now sits in the card's trailing corner — right in LTR, left in
+   RTL (mirrored, like everything else in this app). Its digit order stays
+   forced left-to-right either way, since "31/12/2026 - 10:15 AM" is a
+   numeric format, not naturally RTL script. */
 [dir="rtl"] .activity-item .when {
   direction: ltr;
-  text-align: right;
+  text-align: left;
   unicode-bidi: isolate;
 }
