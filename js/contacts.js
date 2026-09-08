@@ -238,26 +238,17 @@ function renderFieldGroupHTML(key, c) {
 async function renderInfoTab(c) {
   const settings = await Settings.get();
   const config = settings.contactFieldConfig || DEFAULT_CONTACT_FIELD_CONFIG;
-  const allTags = await Tags.getAll();
+  // Nickname and Company/Job title are now always shown in the hero, so the
+  // "Details" section below skips them to avoid showing the same thing twice.
   const groupsHTML = config
-    .filter((f) => f.visible)
+    .filter((f) => f.visible && f.key !== "nickname" && f.key !== "companyJobTitle")
     .map((f) => renderFieldGroupHTML(f.key, c))
     .join("");
 
-  const tagsHTML = c.tags && c.tags.length
-    ? `<div class="field-row"><p class="label">${t("label_tags")}</p><div class="tag-row">${c.tags.map((tid) => {
-        const t2 = allTags.find((x) => x.id === tid);
-        return t2 ? `<span class="tag" style="background:${t2.color};color:#fff">${escapeHTML(t2.name)}</span>` : "";
-      }).join("")}</div></div>`
-    : "";
-
-  // Upcoming events lead the tab (right under the quick actions), then tags
-  // (first in the list, ahead of phone/email/etc.), then the rest, then
-  // Added/Modified at the very end.
   return `
     ${await renderLinkedEvents(c.id)}
     <div class="field-list">
-      ${tagsHTML}
+      <p class="section-title">${t("label_details")}</p>
       ${groupsHTML}
       <div class="field-row"><p class="label">${t("label_added")}</p><p class="value">${fmtDate(c.createdAt)}</p></div>
       <div class="field-row"><p class="label">${t("label_modified")}</p><p class="value">${fmtDate(c.updatedAt)}</p></div>
@@ -280,28 +271,42 @@ async function renderDetail() {
   if (!c) return;
 
   const addr = primaryAddress(c);
+  const allTags = await Tags.getAll();
+  const tagsHTML = c.tags && c.tags.length
+    ? `<div class="tag-row hero-tags">${c.tags.map((tid) => {
+        const t2 = allTags.find((x) => x.id === tid);
+        return t2 ? `<span class="tag" style="background:${t2.color};color:#fff">${escapeHTML(t2.name)}</span>` : "";
+      }).join("")}</div>`
+    : "";
+
   document.getElementById("detail-hero").innerHTML = `
     <div class="hero-top">
       ${c.photoDataUrl
         ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover;width:56px;height:56px" />`
         : `<div class="avatar" style="background:rgba(255,255,255,0.18)">${initials(c)}</div>`}
       <div class="hero-name-block">
-        <h2>${escapeHTML(fullName(c))}${c.nickname ? ` <span style="opacity:0.75;font-weight:400">"${escapeHTML(c.nickname)}"</span>` : ""}</h2>
+        <div class="hero-name-row">
+          <h2>${escapeHTML(fullName(c))}</h2>
+          <span class="badge hero-badge">${catLabel(c.category)}</span>
+        </div>
+        ${c.nickname ? `<p class="hero-nickname">"${escapeHTML(c.nickname)}"</p>` : ""}
         ${c.jobTitle || c.company ? `<p>${escapeHTML([c.jobTitle, c.company].filter(Boolean).join(" · "))}</p>` : ""}
-        <span class="badge hero-badge">${catLabel(c.category)}</span>
+        ${tagsHTML}
       </div>
     </div>
     ${addr ? `
-      <div class="hero-address">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-        <span>${escapeHTML(addr.value)}</span>
+      <div class="hero-address-row">
+        ${addr.mapsLink ? `
+          <a class="hero-directions-btn" target="_blank" rel="noopener" href="${escapeHTML(addr.mapsLink)}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
+            ${t("qa_directions")}
+          </a>
+        ` : ""}
+        <span class="hero-address-text">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0114 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          ${escapeHTML(addr.value)}
+        </span>
       </div>
-      ${addr.mapsLink ? `
-        <a class="hero-directions-btn" target="_blank" rel="noopener" href="${escapeHTML(addr.mapsLink)}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-          ${t("qa_directions")}
-        </a>
-      ` : ""}
     ` : ""}
   `;
 
@@ -359,6 +364,22 @@ function wireAudioResume(audioEl, key) {
   audioEl.addEventListener("ended", () => saveAudioPosition(key, 0));
 }
 
+// Derives the small top-right type badge and the top-left title for an
+// activity entry. Note/call entries use the note's own title (or a kind
+// fallback); system entries (contact created, category changed) have no
+// separate "title" concept, so the generated description text doubles as
+// the title, with a generic badge alongside it.
+function activityTypeBadge(a) {
+  if (a.noteKind === "call") return a.callMedia === "voice" ? t("activity_type_call_voice") : t("activity_type_call_text");
+  if (a.noteKind === "note") return t("activity_type_note");
+  if (a.type === "category_changed") return t("activity_type_update");
+  return t("activity_type_contact");
+}
+function activityCardTitle(a) {
+  if (a.noteKind) return a.noteTitle || (a.noteKind === "call" ? t("note_title_fallback_call") : t("note_title_fallback_note"));
+  return a.text || "";
+}
+
 function renderActivityCardHTML(a, opts) {
   opts = opts || {};
   const isVoice = a.noteKind === "call" && a.callMedia === "voice" && a.audioDataUrl;
@@ -369,12 +390,14 @@ function renderActivityCardHTML(a, opts) {
   return `
     <div class="activity-item" data-activity-id="${a.id}">
       ${opts.contactName ? `<p class="activity-contact-name">${escapeHTML(opts.contactName)}</p>` : ""}
-      <p class="when">${fmtDateNumeric(a.date)}</p>
-      <p class="what">${escapeHTML(a.text || "")}</p>
-      ${a.noteTitle ? `<p class="activity-note-title">${escapeHTML(a.noteTitle)}</p>` : ""}
+      <div class="activity-card-top">
+        <p class="activity-card-title">${escapeHTML(activityCardTitle(a))}</p>
+        <span class="activity-type-badge">${activityTypeBadge(a)}</span>
+      </div>
+      ${isVoice ? `<audio class="activity-audio" controls preload="metadata" data-audio-key="${a.id}" src="${a.audioDataUrl}"></audio>` : ""}
       ${fullText ? `<p class="activity-note-preview">${escapeHTML(previewText)}</p>` : ""}
       ${isLong ? `<button type="button" class="activity-expand-btn" data-expand-id="${a.id}">${t("btn_read_more")}</button>` : ""}
-      ${isVoice ? `<audio class="activity-audio" controls preload="metadata" data-audio-key="${a.id}" src="${a.audioDataUrl}"></audio>` : ""}
+      <p class="when">${fmtDateNumeric(a.date)}</p>
     </div>
   `;
 }
@@ -417,15 +440,20 @@ function renderActivityTab(c) {
 // ---------------- Bottom sheet: expanded note / call-note view ----------------
 let noteSheetHideTimer = null;
 
-function openNoteSheet({ title, date, text, audioDataUrl, audioKey }) {
+// Generic bottom-sheet opener — both the "expand a long note" view and the
+// "Add Activity" action menu reuse this one sheet element, just with
+// different body content (and the date line hidden when not applicable).
+function openSheet({ title, date, bodyHTML }) {
   document.getElementById("note-sheet-title").textContent = title || "";
-  document.getElementById("note-sheet-date").textContent = date || "";
-  const body = document.getElementById("note-sheet-body");
-  body.innerHTML = `
-    ${text ? `<p style="margin:0 0 ${audioDataUrl ? "14px" : "0"}">${escapeHTML(text)}</p>` : ""}
-    ${audioDataUrl ? `<audio controls preload="metadata" data-audio-key="${audioKey}-sheet" src="${audioDataUrl}"></audio>` : ""}
-  `;
-  if (audioDataUrl) wireAudioResume(body.querySelector("audio"), audioKey + "-sheet");
+  const dateEl = document.getElementById("note-sheet-date");
+  if (date) {
+    dateEl.textContent = date;
+    dateEl.style.display = "";
+  } else {
+    dateEl.textContent = "";
+    dateEl.style.display = "none";
+  }
+  document.getElementById("note-sheet-body").innerHTML = bodyHTML;
 
   const backdrop = document.getElementById("note-sheet-backdrop");
   const sheet = document.getElementById("note-sheet");
@@ -438,6 +466,18 @@ function openNoteSheet({ title, date, text, audioDataUrl, audioKey }) {
   });
 }
 
+function openNoteSheet({ title, date, text, audioDataUrl, audioKey }) {
+  openSheet({
+    title,
+    date,
+    bodyHTML: `
+      ${text ? `<p style="margin:0 0 ${audioDataUrl ? "14px" : "0"}">${escapeHTML(text)}</p>` : ""}
+      ${audioDataUrl ? `<audio controls preload="metadata" data-audio-key="${audioKey}-sheet" src="${audioDataUrl}"></audio>` : ""}
+    `,
+  });
+  if (audioDataUrl) wireAudioResume(document.querySelector("#note-sheet-body audio"), audioKey + "-sheet");
+}
+
 function closeNoteSheet() {
   const backdrop = document.getElementById("note-sheet-backdrop");
   const sheet = document.getElementById("note-sheet");
@@ -448,6 +488,54 @@ function closeNoteSheet() {
     backdrop.hidden = true;
     sheet.hidden = true;
   }, 250);
+}
+
+// ---------------- "Add Activity" quick-action menu ----------------
+function activityMenuRowHTML(icon, label, action) {
+  return `
+    <button type="button" class="activity-menu-row" data-action="${action}">
+      <span class="activity-menu-icon">${icon}</span>
+      <span>${label}</span>
+    </button>
+  `;
+}
+
+function openActivityMenu(contactId) {
+  const icons = {
+    task: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+    meeting: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><circle cx="12" cy="15" r="2.4"/></svg>',
+    note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/></svg>',
+    voice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0"/><path d="M12 19v3"/></svg>',
+    doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/><path d="M9 13h6M9 17h6"/></svg>',
+  };
+  openSheet({
+    title: t("btn_add_activity"),
+    date: "",
+    bodyHTML: `<div class="activity-menu-list">${[
+      activityMenuRowHTML(icons.task, t("menu_add_task"), "task"),
+      activityMenuRowHTML(icons.meeting, t("menu_add_meeting"), "meeting"),
+      activityMenuRowHTML(icons.note, t("menu_add_note"), "note"),
+      activityMenuRowHTML(icons.voice, t("menu_add_voice_note"), "voice"),
+      activityMenuRowHTML(icons.doc, t("menu_add_document"), "doc"),
+    ].join("")}</div>`,
+  });
+  document.querySelectorAll(".activity-menu-row").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeNoteSheet();
+      const action = btn.dataset.action;
+      if (action === "task") openEventForm(null, { contactId, type: "task" });
+      else if (action === "meeting") openEventForm(null, { contactId, type: "meeting" });
+      else if (action === "note") openNoteForm(contactId, null);
+      else if (action === "voice") openNoteForm(contactId, null, { kind: "call", callMedia: "voice" });
+      else if (action === "doc") {
+        setDetailTab("docs");
+        setTimeout(() => {
+          const input = document.getElementById("doc-file-input");
+          if (input) input.click();
+        }, 350); // let the screen's own close/settle finish first
+      }
+    });
+  });
 }
 
 // ---------------- Global activity feed (across every contact) ----------------
@@ -547,8 +635,10 @@ async function renderDocsTab(contactId) {
 // ---------------- Notes tab (multiple notes + call notes, per contact) ----------------
 function fmtDuration(sec) {
   sec = Math.max(0, Math.round(sec || 0));
-  const m = Math.floor(sec / 60);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
   const s = sec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
@@ -591,7 +681,7 @@ async function renderNotesTab(contactId) {
 }
 
 // ---------------- Note editor (add/edit a note or call note) ----------------
-const MAX_CALL_NOTE_SECONDS = 300; // 5 minutes
+const MAX_CALL_NOTE_SECONDS = 7200; // 2 hours
 let noteFormContactId = null;
 let noteFormEditingId = null;
 let noteFormKind = "note"; // note | call
@@ -604,12 +694,12 @@ let recordedChunks = [];
 let recordTimerInterval = null;
 let recordStartTime = 0;
 
-async function openNoteForm(contactId, noteId) {
+async function openNoteForm(contactId, noteId, presets) {
   releaseRecordingResources();
   noteFormContactId = contactId;
   noteFormEditingId = noteId || null;
-  noteFormKind = "note";
-  noteFormCallMedia = "text";
+  noteFormKind = (presets && presets.kind) || "note";
+  noteFormCallMedia = (presets && presets.callMedia) || "text";
   noteFormAudioDataUrl = "";
   noteFormAudioDurationSec = 0;
   document.getElementById("note-title").value = "";

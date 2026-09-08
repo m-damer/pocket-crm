@@ -58,6 +58,7 @@ document.getElementById("btn-form-save").addEventListener("click", saveForm);
 document.getElementById("btn-delete-contact").addEventListener("click", deleteCurrentContact);
 document.getElementById("btn-detail-edit").addEventListener("click", () => openForm(Contacts.currentId));
 document.getElementById("btn-detail-save-to-phone").addEventListener("click", () => saveContactToPhone(Contacts.currentId));
+document.getElementById("fab-add-activity").addEventListener("click", () => openActivityMenu(Contacts.currentId));
 
 document.getElementById("btn-note-sheet-close").addEventListener("click", closeNoteSheet);
 document.getElementById("note-sheet-backdrop").addEventListener("click", closeNoteSheet);
@@ -433,6 +434,9 @@ document.getElementById("btn-ev-cancel").addEventListener("click", closeAllScree
 document.getElementById("btn-ev-cancel-2").addEventListener("click", closeAllScreens);
 document.getElementById("btn-ev-save").addEventListener("click", saveEventForm);
 document.getElementById("btn-ev-delete").addEventListener("click", deleteCurrentEvent);
+document.getElementById("btn-ev-detail-back").addEventListener("click", closeAllScreens);
+document.getElementById("btn-ev-detail-edit").addEventListener("click", () => openEventForm(eventDetailId));
+document.getElementById("btn-ev-detail-delete").addEventListener("click", deleteEventFromDetail);
 document.querySelectorAll("#ev-type button").forEach((b) => {
   b.addEventListener("click", () => setEventType(b.dataset.type));
 });
@@ -445,6 +449,8 @@ document.querySelectorAll("#schedule-chips .chip").forEach((chip) => {
   });
 });
 document.getElementById("btn-route-today").addEventListener("click", () => Schedule.routeToday());
+document.getElementById("btn-cal-prev").addEventListener("click", calendarPrevMonth);
+document.getElementById("btn-cal-next").addEventListener("click", calendarNextMonth);
 
 // ---------------- Wiring: Reports ----------------
 document.getElementById("row-reports").addEventListener("click", openReports);

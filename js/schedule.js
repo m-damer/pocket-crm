@@ -111,7 +111,7 @@ const Schedule = {
     `).join("");
 
     el.querySelectorAll("[data-open]").forEach((row) => {
-      row.addEventListener("click", () => openEventForm(row.dataset.open));
+      row.addEventListener("click", () => openEventDetail(row.dataset.open));
     });
     el.querySelectorAll("[data-toggle]").forEach((btn) => {
       btn.addEventListener("click", async (ev) => {
@@ -122,6 +122,9 @@ const Schedule = {
         await Schedule.refresh();
       });
     });
+
+    renderCalendar();
+    renderCalendarDayEvents();
   },
 
   async refresh() {
@@ -199,9 +202,9 @@ function setEventType(type) {
   document.querySelectorAll("#ev-type button").forEach((b) => b.classList.toggle("active", b.dataset.type === type));
 }
 
-async function openEventForm(id) {
+async function openEventForm(id, presets) {
   eventEditingId = id || null;
-  eventType = "task";
+  eventType = (presets && presets.type) || "task";
   document.getElementById("ev-form-title").textContent = id ? t("event_form_title_edit") : t("event_form_title_new");
 
   const now = new Date(Date.now() + 30 * 60000); // default: 30 min from now
@@ -211,8 +214,8 @@ async function openEventForm(id) {
   const defaults = toLocalInputParts(now.toISOString());
   document.getElementById("ev-date").value = defaults.date;
   document.getElementById("ev-time").value = defaults.time;
-  populateContactSelect(null);
-  setEventType("task");
+  populateContactSelect((presets && presets.contactId) || null);
+  setEventType(eventType);
   document.getElementById("ev-delete").style.display = id ? "block" : "none";
 
   if (id) {
@@ -229,6 +232,57 @@ async function openEventForm(id) {
     }
   }
   showScreen("screen-event-form");
+}
+
+// ---------------- Read-only event detail (opened from the schedule list) ----------------
+let eventDetailId = null;
+
+function renderEventDetailContent(e) {
+  const contact = e.contactId ? Contacts.all.find((c) => c.id === e.contactId) : null;
+  const d = new Date(e.when);
+  return `
+    <div class="field-list" style="margin-top:12px">
+      <div class="field-row">
+        <p class="label">${eventTypeLabel(e.type)}</p>
+        <p class="value" style="font-size:19px;font-weight:700">${escapeHTML(e.title || t("untitled_event"))}</p>
+      </div>
+      <div class="field-row"><p class="label">${t("label_date")}</p><p class="value">${d.toLocaleDateString(I18N.localeTag(), { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p></div>
+      <div class="field-row"><p class="label">${t("label_time")}</p><p class="value">${timeLabel(e.when)}</p></div>
+      ${contact ? `<div class="field-row" id="ev-detail-contact-row" data-contact-id="${contact.id}" style="cursor:pointer">
+        <p class="label">${t("label_linked_contact")}</p>
+        <p class="value" style="color:var(--blue);font-weight:650">${escapeHTML(fullName(contact))}</p>
+      </div>` : ""}
+      ${e.notes ? `<div class="field-row"><p class="label">${t("label_notes")}</p><p class="value" style="white-space:pre-wrap">${escapeHTML(e.notes)}</p></div>` : ""}
+      <div class="field-row">
+        <p class="label">${t("label_status")}</p>
+        <p class="value">${e.completed ? t("status_completed") : t("status_pending")}</p>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" id="btn-ev-detail-toggle" style="width:100%">
+        ${e.completed ? t("btn_mark_incomplete") : t("btn_mark_complete")}
+      </button>
+    </div>
+  `;
+}
+
+async function openEventDetail(id) {
+  eventDetailId = id;
+  const e = await Events.get(id);
+  if (!e) return;
+  document.getElementById("event-detail-content").innerHTML = renderEventDetailContent(e);
+
+  const contactRow = document.getElementById("ev-detail-contact-row");
+  if (contactRow) {
+    contactRow.addEventListener("click", () => openDetail(contactRow.dataset.contactId));
+  }
+  document.getElementById("btn-ev-detail-toggle").addEventListener("click", async () => {
+    await Events.update(id, { completed: !e.completed });
+    await Schedule.refresh();
+    await openEventDetail(id); // re-render with the flipped status
+  });
+
+  showScreen("screen-event-detail");
 }
 
 async function saveEventForm() {
@@ -270,4 +324,144 @@ async function deleteCurrentEvent() {
   showToast(t("toast_deleted"));
   await Schedule.refresh();
   closeAllScreens();
+}
+
+async function deleteEventFromDetail() {
+  if (!eventDetailId) return;
+  if (!confirm(t("confirm_delete_item"))) return;
+  await Events.remove(eventDetailId);
+  showToast(t("toast_deleted"));
+  await Schedule.refresh();
+  closeAllScreens();
+}
+
+// ---------------- Calendar month view ----------------
+let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let calendarSelectedDay = null; // "YYYY-MM-DD" or null
+
+function dayKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function eventCountsByDay() {
+  const map = {};
+  Schedule.all.forEach((e) => {
+    const key = dayKey(new Date(e.when));
+    map[key] = (map[key] || 0) + 1;
+  });
+  return map;
+}
+
+function renderCalendarWeekdays() {
+  const wrap = document.getElementById("calendar-weekdays");
+  if (!wrap) return;
+  const base = new Date(2023, 0, 1); // a Sunday — week always starts Sunday
+  const labels = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(base.getTime() + i * 86400000);
+    labels.push(d.toLocaleDateString(I18N.localeTag(), { weekday: "narrow" }));
+  }
+  wrap.innerHTML = labels.map((l) => `<span>${escapeHTML(l)}</span>`).join("");
+}
+
+function renderCalendar() {
+  const monthLabel = document.getElementById("calendar-month-label");
+  const grid = document.getElementById("calendar-grid");
+  if (!monthLabel || !grid) return;
+
+  monthLabel.textContent = calendarMonth.toLocaleDateString(I18N.localeTag(), { month: "long", year: "numeric" });
+  renderCalendarWeekdays();
+
+  const year = calendarMonth.getFullYear(), month = calendarMonth.getMonth();
+  const startOffset = new Date(year, month, 1).getDay(); // 0 = Sunday
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+  const counts = eventCountsByDay();
+  const todayKey = dayKey(new Date());
+
+  const cells = [];
+  for (let i = startOffset - 1; i >= 0; i--) cells.push({ dayNum: daysInPrevMonth - i, monthOffset: -1 });
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ dayNum: d, monthOffset: 0 });
+  let nextDay = 1;
+  while (cells.length % 7 !== 0) cells.push({ dayNum: nextDay++, monthOffset: 1 });
+
+  grid.innerHTML = cells.map((c) => {
+    const cellDate = new Date(year, month + c.monthOffset, c.dayNum);
+    const key = dayKey(cellDate);
+    const classes = ["calendar-day"];
+    if (c.monthOffset !== 0) classes.push("other-month");
+    if (key === todayKey) classes.push("today");
+    if (calendarSelectedDay === key) classes.push("selected");
+    return `
+      <button type="button" class="${classes.join(" ")}" data-daykey="${key}">
+        ${c.dayNum}
+        ${counts[key] ? `<span class="cal-dot"></span>` : ""}
+      </button>
+    `;
+  }).join("");
+
+  grid.querySelectorAll(".calendar-day").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      calendarSelectedDay = calendarSelectedDay === btn.dataset.daykey ? null : btn.dataset.daykey;
+      renderCalendar();
+      renderCalendarDayEvents();
+    });
+  });
+}
+
+function renderCalendarDayEvents() {
+  const wrap = document.getElementById("calendar-day-events");
+  if (!wrap) return;
+  if (!calendarSelectedDay) {
+    wrap.style.display = "none";
+    wrap.innerHTML = "";
+    return;
+  }
+  const [y, m, d] = calendarSelectedDay.split("-").map(Number);
+  const dayEvents = Schedule.all
+    .filter((e) => {
+      const ed = new Date(e.when);
+      return ed.getFullYear() === y && ed.getMonth() === m - 1 && ed.getDate() === d;
+    })
+    .sort((a, b) => a.when.localeCompare(b.when));
+
+  wrap.style.display = "block";
+  if (dayEvents.length === 0) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:20px 16px"><p>${t("calendar_no_events_day")}</p></div>`;
+    return;
+  }
+  wrap.innerHTML = dayEvents.map((e) => `
+    <div class="event-row ${e.completed ? "done" : ""}" data-id="${e.id}">
+      <button class="event-check ${e.completed ? "checked" : ""}" data-toggle="${e.id}" title="${e.completed ? t("mark_incomplete_title") : t("mark_complete_title")}">
+        ${e.completed ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : ""}
+      </button>
+      <div class="event-info" data-open="${e.id}">
+        <p class="event-title">${escapeHTML(e.title || t("untitled_event"))}</p>
+        <p class="event-sub">${timeLabel(e.when)}${e.contactId ? " · " + escapeHTML(Schedule.contactName(e.contactId)) : ""}</p>
+      </div>
+      <span class="badge event-badge" style="background:${EVENT_TYPE_META[e.type].soft};color:${EVENT_TYPE_META[e.type].color}">${eventTypeLabel(e.type)}</span>
+    </div>
+  `).join("");
+
+  wrap.querySelectorAll("[data-open]").forEach((row) => {
+    row.addEventListener("click", () => openEventDetail(row.dataset.open));
+  });
+  wrap.querySelectorAll("[data-toggle]").forEach((btn) => {
+    btn.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      const id = btn.dataset.toggle;
+      const e2 = await Events.get(id);
+      await Events.update(id, { completed: !e2.completed });
+      await Schedule.refresh();
+    });
+  });
+}
+
+function calendarPrevMonth() {
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+  renderCalendar();
+}
+function calendarNextMonth() {
+  calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+  renderCalendar();
 }
