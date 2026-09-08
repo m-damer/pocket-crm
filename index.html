@@ -76,6 +76,16 @@
         <button class="chip" data-sfilter="all" data-i18n="sfilter_all">All</button>
       </div>
     </div>
+    <div class="calendar" id="schedule-calendar">
+      <div class="calendar-header">
+        <button type="button" class="icon-btn" id="btn-cal-prev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <p class="calendar-month-label" id="calendar-month-label"></p>
+        <button type="button" class="icon-btn" id="btn-cal-next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+      <div class="calendar-weekdays" id="calendar-weekdays"></div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </div>
+    <div class="field-list" id="calendar-day-events" style="display:none"></div>
     <div class="list" id="schedule-list"></div>
   </section>
 
@@ -217,6 +227,9 @@
       <div id="detail-tab-notes" hidden></div>
       <div id="detail-tab-docs" hidden></div>
     </div>
+    <button class="fab screen-fab" id="fab-add-activity" title="Add Activity" data-i18n-title="btn_add_activity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
   </div>
 
   <!-- ===== ADD / EDIT FORM SCREEN ===== -->
@@ -507,6 +520,19 @@
       <div class="danger-zone" id="ev-delete" style="display:none">
         <button class="btn-danger" id="btn-ev-delete" data-i18n="btn_delete_item">Delete item</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== EVENT DETAIL SCREEN (read-only) ===== -->
+  <div class="screen" id="screen-event-detail">
+    <header class="header">
+      <button class="icon-btn icon-back" id="btn-ev-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 data-i18n="event_detail_title">Details</h1>
+      <button class="icon-btn" id="btn-ev-detail-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
+      <button class="icon-btn" id="btn-ev-detail-delete" style="color:#F3C9C9" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+    </header>
+    <div class="view">
+      <div id="event-detail-content"></div>
     </div>
   </div>
 

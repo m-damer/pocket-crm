@@ -2,6 +2,17 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
+## Contact screen overhaul + Schedule detail + Calendar (this update)
+- **Hero card restructured**: name and category badge share one line; nickname sits right under the name; job title/company below that; tags below that
+- **Address block**: Directions button and address text share one row, with Directions first so it's never pushed off-screen by a long address — and it links only to the Google Maps URL you actually entered
+- **"Add Activity" floating button** on the contact screen: tap it for a quick menu — Add task, Add meeting, Add note, Add voice note, Add document — each pre-filled and linked to that contact
+- **Info tab** now carries a "Details" heading and only shows what isn't already in the hero (phone, email, address, website, birthday, custom fields, added/modified dates)
+- **Activity cards redesigned**: title top-left, type badge top-right, description in the middle, date in the bottom corner (mirrors correctly in Arabic — right corner in English becomes left corner in Arabic, not hardcoded). Long notes get a "Read more" bottom sheet; voice notes get an inline player right under the title
+- **Voice notes**: max length raised from 5 minutes to **2 hours**, with the timer switching to `H:MM:SS` past the one-hour mark
+- **Schedule**: tapping an event now opens a **read-only detail screen** first (Edit and Delete icons in the header) instead of jumping straight into editing — with a one-tap "Mark as complete" toggle and a tap-through to the linked contact
+- **Calendar month view**: added to the Schedule tab, with month navigation, a dot under any day that has events, and tapping a day shows that day's events in their own list underneath — separate from the existing Upcoming/Today/Completed/All filtered list above it
+- Fixed a real (if minor) bug along the way: the "Add Activity" menu had visible gaps between its buttons from stray whitespace in the generated HTML
+
 ## UI/UX polish pass (this update)
 - **Bottom nav fixed for good**: found and fixed the real bug behind the nav sinking below the screen on the More tab — a classic flexbox issue (`.view` needs `min-height: 0` to actually respect `overflow-y: auto` instead of growing past the viewport). The nav is now `position: fixed`, always pinned.
 - **New Activity tab** (4th bottom-nav icon): a running feed of everything across every contact — notes, calls, edits — newest first, tap any entry to jump straight to that contact's own Activity tab.
