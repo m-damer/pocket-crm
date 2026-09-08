@@ -1,8 +1,8 @@
 from PIL import Image, ImageDraw
 import math
 
-NAVY = (31, 61, 113, 255)      # #1F3D71
-BLUE = (0, 155, 222, 255)      # #009BDE
+NAVY = (17, 95, 69, 255)       # #115F45 (deep emerald)
+BLUE = (16, 132, 93, 255)      # #10845D (vivid emerald)
 WHITE = (247, 248, 251, 255)   # near-white for contrast
 
 def rounded_square(size, radius_ratio=0.22):
@@ -58,7 +58,7 @@ def make_icon(size, maskable=False, path="icon.png"):
         draw_mark(d, size)
     img.save(path)
 
-make_icon(192, path="/home/claude/crm/icons/icon-192.png")
-make_icon(512, path="/home/claude/crm/icons/icon-512.png")
-make_icon(512, maskable=True, path="/home/claude/crm/icons/icon-512-maskable.png")
+make_icon(192, path="icons/icon-192.png")
+make_icon(512, path="icons/icon-512.png")
+make_icon(512, maskable=True, path="icons/icon-512-maskable.png")
 print("done")

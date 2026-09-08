@@ -1,8 +1,15 @@
-# Cyberomeda CRM — Phase 8
+# Cyberomeda CRM
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Phase 8b — Client reports (this update)
+## Visual redesign — Material 3, emerald brand (this update)
+- New brand color: **emerald/jade green** (`#10845D` primary, `#115F45` deep, `#D7F4EA` soft tint) — deliberately distinct from the blue/purple most CRMs use
+- Full Material 3 styling pass across every screen: pill-shaped buttons (filled primary / outlined secondary), tonal (soft-background) chips and tabs instead of solid-fill, soft elevation shadows on list cards, a rounded floating search bar, and a proper Material nav-bar pill indicator behind the active tab icon
+- Category badges (Customer/Lead/Lost) were deliberately reassigned to blue/amber/grey so they stay visually distinct from the new green brand color instead of blending into it
+- App icons and the OS-level theme color (status bar, splash screen) were regenerated to match
+- Found and fixed a real bug while testing this in Arabic: the off-screen slide-in panels were creating invisible horizontal scroll overflow that happened to be harmless in English (default scroll position hid it) but caused the entire Arabic UI to render blank on some devices — fixed at the root (`overflow: hidden` on the app shell)
+
+## Phase 8b — Client reports
 - **Reports** (More → Reports): three views — **Summary**, **Activity**, and **By Tag**
 - **Summary**: total contact count, a breakdown by category (Customer / Lead / Lost), and a count per tag
 - **Activity**: pick a date range and see how many contacts were added and how many activity-log entries (notes, calls, category changes) happened in that window, with the full list below

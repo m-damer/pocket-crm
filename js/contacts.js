@@ -1,5 +1,5 @@
 const CAT_META = {
-  customer: { color: "#1F8A5F" },
+  customer: { color: "#0068B3" },
   lead: { color: "#C97C1F" },
   lost: { color: "#8A93A3" },
 };

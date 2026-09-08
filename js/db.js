@@ -49,7 +49,7 @@ function uid(prefix = "c") {
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-const TAG_COLOR_PALETTE = ["#1F3D71", "#009BDE", "#1F8A5F", "#C97C1F", "#B3261E", "#8A93A3", "#6B4FA0", "#0E7C86", "#C2185B", "#5D4037"];
+const TAG_COLOR_PALETTE = ["#115F45", "#10845D", "#0068B3", "#C97C1F", "#B3261E", "#8A93A3", "#6B4FA0", "#0E7C86", "#C2185B", "#5D4037"];
 
 // Builds a short human-readable activity description for a note event.
 // `actionKey` is one of "added" | "edited" | "deleted"; translated at the

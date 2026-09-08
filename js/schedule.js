@@ -3,7 +3,7 @@ function eventTypeLabel(type) {
 }
 const EVENT_TYPE_META = {
   task: { color: "#6B5FB3", soft: "#EFEDFA" },
-  meeting: { color: "#009BDE", soft: "#E5F5FC" },
+  meeting: { color: "#10845D", soft: "#D7F4EA" },
 };
 
 function pad2(n) { return String(n).padStart(2, "0"); }

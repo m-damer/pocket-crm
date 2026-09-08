@@ -86,7 +86,7 @@ const I18N_DICT = {
     row_native_app_s: "Final phase",
     section_about: "About",
     app_name: "Cyberomeda CRM",
-    app_version: "v0.8 \u00b7 Phase 8 build",
+    app_version: "v0.9 \u00b7 Material redesign",
 
     // Contact detail
     detail_title: "Contact",
@@ -441,7 +441,7 @@ const I18N_DICT = {
     row_native_app_s: "\u0627\u0644\u0645\u0631\u062d\u0644\u0629 \u0627\u0644\u0623\u062e\u064a\u0631\u0629",
     section_about: "\u062d\u0648\u0644 \u0627\u0644\u062a\u0637\u0628\u064a\u0642",
     app_name: "Cyberomeda CRM",
-    app_version: "v0.8 \u00b7 \u0625\u0635\u062f\u0627\u0631 \u0627\u0644\u0645\u0631\u062d\u0644\u0629 8",
+    app_version: "v0.9 \u00b7 \u0625\u0639\u0627\u062f\u0629 \u062a\u0635\u0645\u064a\u0645 \u0627\u0644\u0648\u0627\u062c\u0647\u0629",
 
     detail_title: "\u062c\u0647\u0629 \u0627\u0644\u0627\u062a\u0635\u0627\u0644",
     tab_info: "\u0627\u0644\u0645\u0639\u0644\u0648\u0645\u0627\u062a",

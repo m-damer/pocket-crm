@@ -226,7 +226,7 @@ function pdfPageHeader(doc, title) {
   let y = 56;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.setTextColor(31, 61, 113);
+  doc.setTextColor(17, 95, 69);
   doc.text("Cyberomeda CRM", marginX, y);
   y += 20;
   doc.setFontSize(13);
@@ -240,7 +240,7 @@ function pdfPageHeader(doc, title) {
 }
 
 function pdfTable(doc, marginX, y, pageWidth, headers, rows, colWidths) {
-  doc.setFillColor(31, 61, 113);
+  doc.setFillColor(17, 95, 69);
   doc.rect(marginX, y, pageWidth, 20, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
