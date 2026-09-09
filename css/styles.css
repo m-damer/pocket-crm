@@ -1,35 +1,261 @@
 :root {
-  /* Brand — emerald/jade. --navy/--blue names are kept from earlier phases
-     (every component already references these via var(), so repointing the
-     values here re-themes the whole app); the names no longer match the
-     literal hues, but renaming ~30 call sites for a label-only change
-     wasn't worth the risk of missing one. */
-  --navy: #115F45;        /* deep emerald — header, hero, toast, dark surfaces */
-  --navy-dark: #0B4433;   /* darkest emerald — toast background */
-  --blue: #10845D;        /* vivid emerald — primary actions: FAB, primary buttons, active nav, accents */
-  --blue-soft: #D7F4EA;   /* pale mint — tonal backgrounds (soft buttons, chips, tags) */
-  --on-primary-soft: #0B4433; /* dark emerald text for use on --blue-soft backgrounds */
-  --bg: #F6F8F7;
-  --surface: #FFFFFF;
-  --text: #1D2B26;
-  --text-muted: #64716C;
-  --border: #E2E9E6;
-  /* Category colors are deliberately distinct hues from the emerald brand
-     color above, so a "Customer" badge never reads as a generic primary
-     action button. */
-  --customer: #0068B3;
-  --customer-soft: #E5F2FB;
-  --lead: #C97C1F;
-  --lead-soft: #FBF0E3;
-  --lost: #8A93A3;
-  --lost-soft: #EEF0F3;
-  --radius-lg: 20px;
-  --radius-md: 14px;
-  --radius-sm: 10px;
-  --shadow: 0 1px 2px rgba(10, 40, 30, 0.06), 0 6px 20px rgba(10, 40, 30, 0.08);
-  --elevation-1: 0 1px 2px rgba(10, 40, 30, 0.06), 0 2px 8px rgba(10, 40, 30, 0.07);
+  /* ====================================================================
+     MATERIAL 3 DESIGN TOKENS
+     Regenerate the color roles below with: cd m3-theme && node gen_both.js
+     (seed #8C7B57, @material/material-color-utilities, SchemeTonalSpot).
+     Changing the whole app's color theme in the future = changing SEED
+     in that script and pasting the new light/dark values back in here —
+     nothing else in this file should ever need to change for a recolor.
+     ==================================================================== */
+
+  /* ---- Color roles: LIGHT (default) ---- */
+  --md-sys-color-primary: #765a0b;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #ffdf9a;
+  --md-sys-color-on-primary-container: #5a4300;
+  --md-sys-color-inverse-primary: #e7c26c;
+
+  --md-sys-color-secondary: #6b5d3f;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #f4e0bb;
+  --md-sys-color-on-secondary-container: #52452a;
+
+  --md-sys-color-tertiary: #496548;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #cbebc5;
+  --md-sys-color-on-tertiary-container: #324d31;
+
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #93000a;
+
+  --md-sys-color-surface: #fff8f2;
+  --md-sys-color-on-surface: #1f1b13;
+  --md-sys-color-surface-dim: #e2d9cc;
+  --md-sys-color-surface-bright: #fff8f2;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #fcf2e5;
+  --md-sys-color-surface-container: #f6eddf;
+  --md-sys-color-surface-container-high: #f0e7d9;
+  --md-sys-color-surface-container-highest: #ebe1d4;
+  --md-sys-color-surface-variant: #ece1cf;
+  --md-sys-color-on-surface-variant: #4d4639;
+
+  --md-sys-color-outline: #7e7667;
+  --md-sys-color-outline-variant: #d0c5b4;
+  --md-sys-color-inverse-surface: #353027;
+  --md-sys-color-inverse-on-surface: #f9efe2;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+
+  /* "Extended" colors: domain-specific meaning (contact category), not
+     core M3 UI-action roles — M3 explicitly allows named colors outside
+     primary/secondary/tertiary for exactly this. Tone pairing (container
+     ~90-95, on-container ~15-25) follows the same M3 container convention
+     as the roles above, so they read as part of the same system. */
+  --md-extended-customer: #0068b3;
+  --md-extended-on-customer: #ffffff;
+  --md-extended-customer-container: #e5f2fb;
+  --md-extended-on-customer-container: #003354;
+  --md-extended-lead: #8a5a00;
+  --md-extended-on-lead: #ffffff;
+  --md-extended-lead-container: #fbf0e3;
+  --md-extended-on-lead-container: #3d2800;
+  --md-extended-lost: #5c6470;
+  --md-extended-on-lost: #ffffff;
+  --md-extended-lost-container: #eef0f3;
+  --md-extended-on-lost-container: #272e38;
+  --md-extended-accent-container: #efedfa;
+  --md-extended-on-accent-container: #6b5fb3;
+
+  /* ---- Shape (M3 Expressive scale) ---- */
+  --md-sys-shape-corner-none: 0px;
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 16px;
+  --md-sys-shape-corner-large: 24px;
+  --md-sys-shape-corner-extra-large: 32px;
+  --md-sys-shape-corner-full: 999px;
+
+  /* ---- Elevation (dual umbra+penumbra shadows, M3-style) ---- */
+  --md-sys-elevation-level0: none;
+  --md-sys-elevation-level1: 0 1px 2px rgba(0,0,0,0.10), 0 1px 3px 1px rgba(0,0,0,0.08);
+  --md-sys-elevation-level2: 0 1px 2px rgba(0,0,0,0.12), 0 2px 6px 2px rgba(0,0,0,0.09);
+  --md-sys-elevation-level3: 0 1px 3px rgba(0,0,0,0.14), 0 4px 8px 3px rgba(0,0,0,0.10);
+  --md-sys-elevation-level4: 0 2px 3px rgba(0,0,0,0.14), 0 6px 10px 4px rgba(0,0,0,0.10);
+  --md-sys-elevation-level5: 0 4px 4px rgba(0,0,0,0.14), 0 8px 12px 6px rgba(0,0,0,0.10);
+
+  /* ---- Typography (Roboto is Android's own system font — referencing
+     it by name costs nothing offline; it's already on the device) ---- */
+  --md-ref-font: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --md-sys-typescale-display-large: 500 34px/40px var(--md-ref-font);
+  --md-sys-typescale-headline-large: 500 26px/32px var(--md-ref-font);
+  --md-sys-typescale-headline-medium: 500 22px/28px var(--md-ref-font);
+  --md-sys-typescale-headline-small: 500 20px/26px var(--md-ref-font);
+  --md-sys-typescale-title-large: 500 18px/24px var(--md-ref-font);
+  --md-sys-typescale-title-medium: 500 15px/22px var(--md-ref-font);
+  --md-sys-typescale-title-small: 600 13px/18px var(--md-ref-font);
+  --md-sys-typescale-body-large: 400 15.5px/22px var(--md-ref-font);
+  --md-sys-typescale-body-medium: 400 13.5px/19px var(--md-ref-font);
+  --md-sys-typescale-body-small: 400 12px/16px var(--md-ref-font);
+  --md-sys-typescale-label-large: 500 13.5px/19px var(--md-ref-font);
+  --md-sys-typescale-label-medium: 500 12px/16px var(--md-ref-font);
+  --md-sys-typescale-label-small: 500 11px/15px var(--md-ref-font);
+
+  /* ---- Legacy aliases ----
+     Every component rule below still reads --navy/--blue/--bg/etc, not
+     the --md-sys-* tokens above. Pointing the old names at the new
+     tokens re-themes and dark-mode-enables the whole app in one pass;
+     each screen still gets migrated to real M3 shapes/components on its
+     own turn, but none of them are miscolored or light-only in the
+     meantime. Safe to delete once every rule references tokens directly. */
+  --navy: var(--md-sys-color-primary);
+  --navy-dark: var(--md-sys-color-inverse-surface);
+  --blue: var(--md-sys-color-primary);
+  --blue-soft: var(--md-sys-color-primary-container);
+  --on-primary-soft: var(--md-sys-color-on-primary-container);
+  --bg: var(--md-sys-color-surface-container-low);
+  --surface: var(--md-sys-color-surface-container-lowest);
+  --text: var(--md-sys-color-on-surface);
+  --text-muted: var(--md-sys-color-on-surface-variant);
+  --border: var(--md-sys-color-outline-variant);
+  --customer: var(--md-extended-customer);
+  --customer-soft: var(--md-extended-customer-container);
+  --lead: var(--md-extended-lead);
+  --lead-soft: var(--md-extended-lead-container);
+  --lost: var(--md-extended-lost);
+  --lost-soft: var(--md-extended-lost-container);
+  --radius-lg: var(--md-sys-shape-corner-large);
+  --radius-md: var(--md-sys-shape-corner-medium);
+  --radius-sm: var(--md-sys-shape-corner-small);
+  --shadow: var(--md-sys-elevation-level3);
+  --elevation-1: var(--md-sys-elevation-level1);
   --nav-h: 64px;
   --header-h: 56px;
+}
+
+/* ---- Color roles: DARK ----
+   Applied when the user explicitly picks Dark in Settings, OR when
+   they've left it on System and the OS is in dark mode. Same seed,
+   same algorithm, dark tone mapping — not a separate hand-tuned palette,
+   so it can never drift out of sync with the light one. Two rules
+   because CSS has no way to share a block between a plain selector and
+   an @media query — the values are intentionally identical in both. */
+:root[data-theme="dark"] {
+  --md-sys-color-primary: #e7c26c;
+  --md-sys-color-on-primary: #3f2e00;
+  --md-sys-color-primary-container: #5a4300;
+  --md-sys-color-on-primary-container: #ffdf9a;
+  --md-sys-color-inverse-primary: #765a0b;
+
+  --md-sys-color-secondary: #d7c4a0;
+  --md-sys-color-on-secondary: #3a2f15;
+  --md-sys-color-secondary-container: #52452a;
+  --md-sys-color-on-secondary-container: #f4e0bb;
+
+  --md-sys-color-tertiary: #afcfab;
+  --md-sys-color-on-tertiary: #1c361d;
+  --md-sys-color-tertiary-container: #324d31;
+  --md-sys-color-on-tertiary-container: #cbebc5;
+
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+
+  --md-sys-color-surface: #17130b;
+  --md-sys-color-on-surface: #ebe1d4;
+  --md-sys-color-surface-dim: #17130b;
+  --md-sys-color-surface-bright: #3e392f;
+  --md-sys-color-surface-container-lowest: #110e07;
+  --md-sys-color-surface-container-low: #1f1b13;
+  --md-sys-color-surface-container: #231f17;
+  --md-sys-color-surface-container-high: #2e2921;
+  --md-sys-color-surface-container-highest: #39342b;
+  --md-sys-color-surface-variant: #4d4639;
+  --md-sys-color-on-surface-variant: #d0c5b4;
+
+  --md-sys-color-outline: #999080;
+  --md-sys-color-outline-variant: #4d4639;
+  --md-sys-color-inverse-surface: #ebe1d4;
+  --md-sys-color-inverse-on-surface: #353027;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-shadow: #000000;
+
+  --md-extended-customer: #9ecaff;
+  --md-extended-on-customer: #003354;
+  --md-extended-customer-container: #00497a;
+  --md-extended-on-customer-container: #d1e4ff;
+  --md-extended-lead: #ffb951;
+  --md-extended-on-lead: #452b00;
+  --md-extended-lead-container: #633f00;
+  --md-extended-on-lead-container: #ffddb1;
+  --md-extended-lost: #c4c6d4;
+  --md-extended-on-lost: #2e3038;
+  --md-extended-lost-container: #444650;
+  --md-extended-on-lost-container: #e0e2f0;
+  --md-extended-accent-container: #4a3f7a;
+  --md-extended-on-accent-container: #d6cff5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --md-sys-color-primary: #e7c26c;
+    --md-sys-color-on-primary: #3f2e00;
+    --md-sys-color-primary-container: #5a4300;
+    --md-sys-color-on-primary-container: #ffdf9a;
+    --md-sys-color-inverse-primary: #765a0b;
+
+    --md-sys-color-secondary: #d7c4a0;
+    --md-sys-color-on-secondary: #3a2f15;
+    --md-sys-color-secondary-container: #52452a;
+    --md-sys-color-on-secondary-container: #f4e0bb;
+
+    --md-sys-color-tertiary: #afcfab;
+    --md-sys-color-on-tertiary: #1c361d;
+    --md-sys-color-tertiary-container: #324d31;
+    --md-sys-color-on-tertiary-container: #cbebc5;
+
+    --md-sys-color-error: #ffb4ab;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000a;
+    --md-sys-color-on-error-container: #ffdad6;
+
+    --md-sys-color-surface: #17130b;
+    --md-sys-color-on-surface: #ebe1d4;
+    --md-sys-color-surface-dim: #17130b;
+    --md-sys-color-surface-bright: #3e392f;
+    --md-sys-color-surface-container-lowest: #110e07;
+    --md-sys-color-surface-container-low: #1f1b13;
+    --md-sys-color-surface-container: #231f17;
+    --md-sys-color-surface-container-high: #2e2921;
+    --md-sys-color-surface-container-highest: #39342b;
+    --md-sys-color-surface-variant: #4d4639;
+    --md-sys-color-on-surface-variant: #d0c5b4;
+
+    --md-sys-color-outline: #999080;
+    --md-sys-color-outline-variant: #4d4639;
+    --md-sys-color-inverse-surface: #ebe1d4;
+    --md-sys-color-inverse-on-surface: #353027;
+    --md-sys-color-scrim: #000000;
+    --md-sys-color-shadow: #000000;
+
+    --md-extended-customer: #9ecaff;
+    --md-extended-on-customer: #003354;
+    --md-extended-customer-container: #00497a;
+    --md-extended-on-customer-container: #d1e4ff;
+    --md-extended-lead: #ffb951;
+    --md-extended-on-lead: #452b00;
+    --md-extended-lead-container: #633f00;
+    --md-extended-on-lead-container: #ffddb1;
+    --md-extended-lost: #c4c6d4;
+    --md-extended-on-lost: #2e3038;
+    --md-extended-lost-container: #444650;
+    --md-extended-on-lost-container: #e0e2f0;
+    --md-extended-accent-container: #4a3f7a;
+    --md-extended-on-accent-container: #d6cff5;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -86,6 +312,10 @@ input, select, textarea { font-family: inherit; }
 }
 
 /* ---------- Header ---------- */
+/* Neutral, blended with the page — not a bold color block. This matches
+   how stock Google apps (Contacts, Gmail, Photos) actually build their top
+   app bars: color lives in the FAB, active nav state, and chips, not the
+   chrome/frame itself. */
 .header {
   height: var(--header-h);
   min-height: var(--header-h);
@@ -93,8 +323,8 @@ input, select, textarea { font-family: inherit; }
   align-items: center;
   gap: 8px;
   padding: 0 16px;
-  background: var(--navy);
-  color: #fff;
+  background: var(--bg);
+  color: var(--text);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -111,11 +341,11 @@ input, select, textarea { font-family: inherit; }
   display: flex; align-items: center; justify-content: center;
   background: transparent;
   border: none;
-  color: #fff;
+  color: var(--text);
   border-radius: 999px;
   cursor: pointer;
 }
-.icon-btn:active { background: rgba(255,255,255,0.15); }
+.icon-btn:active { background: color-mix(in srgb, var(--text) 12%, transparent); }
 .icon-btn svg { width: 22px; height: 22px; }
 /* This app sets `hidden` on several .icon-btn elements to toggle their
    visibility (e.g. the select-mode action buttons) — but .icon-btn's own
@@ -188,18 +418,18 @@ input, select, textarea { font-family: inherit; }
 }
 .calendar-day.other-month { color: var(--text-muted); opacity: 0.4; }
 .calendar-day.today { font-weight: 800; color: var(--blue); }
-.calendar-day.selected { background: var(--blue); color: #fff; }
+.calendar-day.selected { background: var(--blue); color: var(--md-sys-color-on-primary); }
 .calendar-day .cal-dot {
   position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
   width: 4px; height: 4px; border-radius: 50%; background: var(--blue);
 }
-.calendar-day.selected .cal-dot { background: #fff; }
+.calendar-day.selected .cal-dot { background: var(--md-sys-color-on-primary); }
 .chip {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text-muted);
   padding: 6px 13px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-small);
   font-size: 13.5px;
   font-weight: 550;
   white-space: nowrap;
@@ -221,7 +451,7 @@ input, select, textarea { font-family: inherit; }
   cursor: pointer;
   box-shadow: var(--elevation-1);
 }
-.contact-row:active { background: #FAFBFD; }
+.contact-row:active { background: var(--md-sys-color-surface-container-high); }
 .avatar {
   width: 42px; height: 42px;
   border-radius: 50%;
@@ -239,8 +469,9 @@ input, select, textarea { font-family: inherit; }
 .badge {
   font-size: 11.5px;
   font-weight: 650;
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   flex-shrink: 0;
 }
 .badge.customer { background: var(--customer-soft); color: var(--customer); }
@@ -261,13 +492,13 @@ input, select, textarea { font-family: inherit; }
   position: absolute;
   right: 20px;
   bottom: calc(var(--nav-h) + 20px);
-  width: 54px; height: 54px;
-  border-radius: 50%;
+  width: 56px; height: 56px;
+  border-radius: var(--md-sys-shape-corner-large);
   background: var(--blue);
   border: none;
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 6px 16px rgba(16, 132, 93, 0.4);
+  box-shadow: var(--md-sys-elevation-level3);
   cursor: pointer;
   z-index: 15;
 }
@@ -275,7 +506,7 @@ input, select, textarea { font-family: inherit; }
    bottom nav to leave room for, so this sits closer to the edge. */
 .screen-fab { bottom: 20px; }
 .fab svg { width: 26px; height: 26px; }
-.fab:active { background: #0D6C4C; }
+.fab:active { filter: brightness(0.92); }
 
 /* ---------- Bottom nav ---------- */
 .bottom-nav {
@@ -334,37 +565,43 @@ input, select, textarea { font-family: inherit; }
 .screen .view { padding-bottom: 24px; }
 
 .detail-hero {
-  background: var(--navy);
-  color: #fff;
+  background: var(--bg);
+  color: var(--text);
   padding: 18px 20px 22px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
 }
 .detail-hero .avatar { width: 56px; height: 56px; font-size: 19px; margin-bottom: 10px; flex-shrink: 0; }
 .detail-hero h2 { margin: 0 0 3px; font-size: 20px; }
-.detail-hero p { margin: 0; opacity: 0.85; font-size: 13.5px; }
+.detail-hero p { margin: 0; color: var(--text-muted); font-size: 13.5px; }
 .hero-top { display: flex; align-items: flex-start; gap: 12px; }
 .hero-name-block { flex: 1; min-width: 0; padding-top: 2px; }
 .hero-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .hero-name-row h2 { margin: 0; }
 .hero-badge {
+  /* Deliberately no color/background here — falls through to the
+     category-specific .badge.customer/.lead/.lost rules below, so the
+     chip reads as "this contact's category" (like the reference
+     screenshot's colored "Your info" chip) rather than a generic
+     translucent overlay, now that it isn't sitting on a solid-color header. */
   display: inline-block;
-  background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.35);
   font-size: 11.5px; font-weight: 650; padding: 3px 10px; border-radius: 999px; flex-shrink: 0;
 }
-.hero-nickname { margin: 3px 0 0; font-size: 13px; opacity: 0.75; font-style: italic; }
+.hero-nickname { margin: 3px 0 0; font-size: 13px; color: var(--text-muted); font-style: italic; }
 .hero-tags { margin-top: 8px; }
 .hero-address-row {
   display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap;
 }
 .hero-address-text {
   display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 120px;
-  font-size: 13.5px; opacity: 0.92;
+  font-size: 13.5px; color: var(--text-muted);
 }
-.hero-address-text svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.85; }
+.hero-address-text svg { width: 16px; height: 16px; flex-shrink: 0; }
 .hero-directions-btn {
   display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
   padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff; border-radius: 999px; font-size: 12.5px; font-weight: 650;
+  background: var(--blue-soft);
+  border: none;
+  color: var(--on-primary-soft); border-radius: 999px; font-size: 12.5px; font-weight: 650;
   text-decoration: none; cursor: pointer;
 }
 .hero-directions-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
@@ -457,7 +694,7 @@ input, select, textarea { font-family: inherit; }
 
 /* ---------- Bottom sheet (expanded note view) ---------- */
 .bottom-sheet-backdrop {
-  position: fixed; inset: 0; background: rgba(10, 20, 16, 0.45);
+  position: fixed; inset: 0; background: color-mix(in srgb, var(--md-sys-color-scrim) 45%, transparent);
   z-index: 70; opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
 }
 .bottom-sheet-backdrop.show { opacity: 1; pointer-events: auto; }
@@ -466,8 +703,8 @@ input, select, textarea { font-family: inherit; }
   transform: translateX(-50%) translateY(100%);
   width: 100%; max-width: 480px; max-height: 75vh;
   background: var(--surface);
-  border-radius: 22px 22px 0 0;
-  box-shadow: 0 -6px 24px rgba(10, 40, 30, 0.18);
+  border-radius: var(--md-sys-shape-corner-extra-large) var(--md-sys-shape-corner-extra-large) 0 0;
+  box-shadow: var(--md-sys-elevation-level3);
   z-index: 71;
   display: flex; flex-direction: column;
   padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
@@ -516,14 +753,15 @@ input, select, textarea { font-family: inherit; }
 .btn-danger {
   width: 100%;
   padding: 12px;
-  border-radius: var(--radius-md);
-  border: 1px solid #F3C9C9;
-  background: #FDF1F1;
-  color: #B3261E;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: none;
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
   font-weight: 650;
   font-size: 14.5px;
   cursor: pointer;
 }
+.btn-danger:active { filter: brightness(0.95); }
 
 /* ---------- Form ---------- */
 .form-group { padding: 4px 16px; margin-bottom: 4px; }
@@ -537,20 +775,48 @@ input, select, textarea { font-family: inherit; }
 .form-group input[type=text],
 .form-group input[type=tel],
 .form-group input[type=email],
+.form-group input[type=number],
+.form-group input[type=date],
+.form-group input[type=time],
 .form-group textarea {
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-extra-small);
   padding: 11px 13px;
   font-size: 15px;
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
+  transition: border-color 0.15s ease;
+}
+.form-group input[type=text]:focus,
+.form-group input[type=tel]:focus,
+.form-group input[type=email]:focus,
+.form-group input[type=number]:focus,
+.form-group input[type=date]:focus,
+.form-group input[type=time]:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  border-width: 2px;
+  padding: 10px 12px;
 }
 .form-group textarea { min-height: 80px; resize: vertical; }
+#ev-contact {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  padding: 11px 30px 11px 13px;
+  font-size: 15px;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d4639' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center / 16px 16px;
+  color: var(--text);
+  cursor: pointer;
+}
 .segmented {
   display: flex;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
   overflow: hidden;
 }
 .segmented button {
@@ -562,16 +828,16 @@ input, select, textarea { font-family: inherit; }
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--md-sys-color-outline-variant);
 }
 .segmented button:last-child { border-right: none; }
 .segmented button.sel-customer.active { background: var(--customer-soft); color: var(--customer); }
 .segmented button.sel-lead.active { background: var(--lead-soft); color: var(--lead); }
 .segmented button.sel-lost.active { background: var(--lost-soft); color: var(--lost); }
-.segmented button.sel-task.active { background: #EFEDFA; color: #6B5FB3; }
+.segmented button.sel-task.active { background: var(--md-extended-accent-container); color: var(--md-extended-on-accent-container); }
 .segmented button.sel-meeting.active { background: var(--blue-soft); color: var(--blue); }
 .segmented button.sel-note.active { background: var(--blue-soft); color: var(--blue); }
-.segmented button.sel-call.active { background: #EFEDFA; color: #6B5FB3; }
+.segmented button.sel-call.active { background: var(--md-extended-accent-container); color: var(--md-extended-on-accent-container); }
 .segmented button.sel-text.active { background: var(--blue-soft); color: var(--blue); }
 .segmented button.sel-voice.active { background: var(--lead-soft); color: var(--lead); }
 .segmented button.sel-lang-en.active,
@@ -586,29 +852,28 @@ input, select, textarea { font-family: inherit; }
   font-size: 14px; font-weight: 550; color: var(--text);
   cursor: pointer;
 }
-.checkbox-label input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); }
 
 .form-actions { padding: 20px 16px 8px; display: flex; gap: 10px; }
 .btn-primary {
   flex: 1;
   background: var(--blue);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   border: none;
   padding: 13px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   font-size: 15px;
   font-weight: 650;
   cursor: pointer;
-  box-shadow: var(--elevation-1);
+  box-shadow: none;
 }
-.btn-primary:active { background: #0D6C4C; }
+.btn-primary:active { filter: brightness(0.92); }
 .btn-secondary {
   flex: 1;
   background: transparent;
   border: 1.5px solid var(--blue);
   color: var(--blue);
   padding: 12.5px;
-  border-radius: 999px;
+  border-radius: var(--md-sys-shape-corner-full);
   font-size: 15px;
   font-weight: 650;
   cursor: pointer;
@@ -642,7 +907,7 @@ input, select, textarea { font-family: inherit; }
   border-radius: 50%;
   border: 2px solid var(--border);
   background: var(--surface);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
   cursor: pointer;
@@ -671,7 +936,7 @@ input, select, textarea { font-family: inherit; }
   width: 42px; height: 42px;
   border-radius: 10px;
   background: var(--navy);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   display: flex; align-items: center; justify-content: center;
   font-weight: 700; font-size: 15px;
   flex-shrink: 0;
@@ -713,9 +978,9 @@ input, select, textarea { font-family: inherit; }
   width: 32px; height: 32px;
   flex-shrink: 0;
   border: none;
-  background: #FDF1F1;
-  color: #B3261E;
-  border-radius: var(--radius-sm);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border-radius: var(--md-sys-shape-corner-small);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
 }
@@ -738,7 +1003,7 @@ input, select, textarea { font-family: inherit; }
   margin: 4px 16px 8px;
   padding: 12px 14px;
   background: var(--navy);
-  color: #fff;
+  color: var(--md-sys-color-on-primary);
   border-radius: var(--radius-md);
   font-weight: 700;
   font-size: 15px;
@@ -768,7 +1033,7 @@ input, select, textarea { font-family: inherit; }
 .invoice-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .invoice-table th {
   text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em;
-  color: #fff; background: var(--navy); padding: 8px 8px; font-weight: 650;
+  color: var(--md-sys-color-on-primary); background: var(--navy); padding: 8px 8px; font-weight: 650;
 }
 .invoice-table th:last-child, .invoice-table td:last-child { text-align: right; }
 .invoice-table td { padding: 8px 8px; border-bottom: 1px solid var(--border); }
@@ -857,7 +1122,7 @@ input, select, textarea { font-family: inherit; }
   left: 50%; bottom: calc(var(--nav-h) + 16px);
   transform: translate(-50%, 12px);
   background: var(--navy-dark);
-  color: #fff;
+  color: var(--md-sys-color-inverse-on-surface);
   padding: 11px 18px;
   border-radius: 999px;
   font-size: 13.5px;
@@ -915,13 +1180,31 @@ input, select, textarea { font-family: inherit; }
   align-items: flex-start;
 }
 .mf-label {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 9px 6px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  padding: 9px 22px 9px 8px;
   font-size: 12.5px;
-  background: var(--surface);
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d4639' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 4px center / 14px 14px;
   color: var(--text);
-  flex: 0 0 78px;
+  flex: 0 0 84px;
+  cursor: pointer;
+}
+/* The chevron above is a static data-URI SVG — it can't reference CSS
+   variables, so its color is baked in at light-mode's onSurfaceVariant.
+   These overrides swap in the dark-mode equivalent color, the same
+   duplication pattern the color tokens themselves already use for
+   explicit-override vs. system-preference dark mode. */
+[data-theme="dark"] .mf-label,
+[data-theme="dark"] #ev-contact {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d0c5b4' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mf-label,
+  :root:not([data-theme="light"]) #ev-contact {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d0c5b4' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  }
 }
 .mf-value-col { flex: 2; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .mf-value, .mf-maps {
@@ -962,7 +1245,37 @@ input, select, textarea { font-family: inherit; }
 }
 .fs-arrow:disabled { opacity: 0.3; }
 .fs-label { flex: 1; font-size: 14px; font-weight: 600; }
-.fs-toggle-input { width: 20px; height: 20px; accent-color: var(--blue); }
+.fs-toggle-input, .checkbox-label input[type=checkbox] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 52px; height: 32px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  border: 2px solid var(--md-sys-color-outline);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.fs-toggle-input::before, .checkbox-label input[type=checkbox]::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 6px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--md-sys-color-outline);
+  transform: translateY(-50%);
+  transition: transform 0.15s ease, background 0.15s ease, width 0.15s ease, height 0.15s ease, left 0.15s ease;
+}
+.fs-toggle-input:checked, .checkbox-label input[type=checkbox]:checked {
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+}
+.fs-toggle-input:checked::before, .checkbox-label input[type=checkbox]:checked::before {
+  background: var(--md-sys-color-on-primary);
+  width: 22px; height: 22px;
+  left: 24px;
+}
 
 /* ---------- Tags: contact-form picker ---------- */
 .tag-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -986,16 +1299,47 @@ input, select, textarea { font-family: inherit; }
   display: flex; align-items: center; gap: 8px;
   padding: 7px 4px; font-size: 14px; cursor: pointer;
 }
-.tag-dropdown-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--blue); flex-shrink: 0; }
+/* M3 Checkbox — small square, rounded corners, checkmark on check. Shared
+   by every "pick several from a list" checkbox in the app (tag pickers,
+   the QR field picker) — distinct from .fs-toggle-input above, which is
+   for binary on/off settings (M3 Switch), a different component for a
+   different kind of choice. */
+.tag-check, .bulk-tag-check, .fp-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  border: 2px solid var(--md-sys-color-outline);
+  background: transparent;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.tag-check:checked, .bulk-tag-check:checked, .fp-check:checked {
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+}
+.tag-check:checked::after, .bulk-tag-check:checked::after, .fp-check:checked::after {
+  content: "";
+  position: absolute;
+  left: 5px; top: 1px;
+  width: 5px; height: 10px;
+  border: solid var(--md-sys-color-on-primary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
 .tag-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .tag-dropdown-new {
   margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--border);
   display: flex; flex-direction: column; gap: 8px;
 }
 .tag-dropdown-new input[type="text"] {
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 9px 8px; font-size: 13.5px; background: var(--surface); color: var(--text);
+  border: 1px solid var(--md-sys-color-outline); border-radius: var(--md-sys-shape-corner-extra-small);
+  padding: 9px 8px; font-size: 13.5px; background: transparent; color: var(--text);
+  transition: border-color 0.15s ease;
 }
+.tag-dropdown-new input[type="text"]:focus { outline: none; border-color: var(--blue); border-width: 2px; padding: 8px 7px; }
 .tag-color-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
 .tag-swatch {
   width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent;
@@ -1092,7 +1436,7 @@ input, select, textarea { font-family: inherit; }
 .select-check.checked { background: var(--blue); border-color: var(--blue); }
 .select-check.checked::after {
   content: ""; width: 9px; height: 5px;
-  border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+  border-left: 2px solid var(--md-sys-color-on-primary); border-bottom: 2px solid var(--md-sys-color-on-primary);
   transform: rotate(-45deg) translate(1px, -1px);
 }
 
@@ -1109,7 +1453,7 @@ input, select, textarea { font-family: inherit; }
 }
 .note-card { cursor: pointer; }
 .record-widget { display: flex; align-items: center; gap: 12px; }
-.record-timer { font-variant-numeric: tabular-nums; font-weight: 700; color: #B3261E; font-size: 15px; }
+.record-timer { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--md-sys-color-error); font-size: 15px; }
 
 /* ---------- RTL (Arabic) overrides ---------- */
 /* Base layout, flex ordering, and text alignment follow `dir` automatically.
