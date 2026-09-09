@@ -1,12 +1,13 @@
 // Simple promise-based IndexedDB wrapper.
 // All business data lives on-device only — nothing is sent anywhere.
 const DB_NAME = "crm-db";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_CONTACTS = "contacts";
 const STORE_EVENTS = "events";
 const STORE_INVOICES = "invoices";
 const STORE_SETTINGS = "settings";
 const STORE_DOCS = "documents";
+const STORE_DEALS = "deals";
 
 let _dbPromise = null;
 
@@ -37,6 +38,11 @@ function openDB() {
       if (!db.objectStoreNames.contains(STORE_DOCS)) {
         const store = db.createObjectStore(STORE_DOCS, { keyPath: "id" });
         store.createIndex("contactId", "contactId", { unique: false });
+      }
+      if (!db.objectStoreNames.contains(STORE_DEALS)) {
+        const store = db.createObjectStore(STORE_DEALS, { keyPath: "id" });
+        store.createIndex("contactId", "contactId", { unique: false });
+        store.createIndex("stage", "stage", { unique: false });
       }
     };
     req.onsuccess = (e) => resolve(e.target.result);
@@ -277,11 +283,12 @@ const DB = {
     const invoices = await Invoices.getAll();
     const settings = await Settings.get();
     const documents = await getAllFromStore(STORE_DOCS);
-    return JSON.stringify({ exportedAt: new Date().toISOString(), contacts, events, invoices, documents, settings }, null, 2);
+    const deals = await Deals.getAll();
+    return JSON.stringify({ exportedAt: new Date().toISOString(), contacts, events, invoices, documents, deals, settings }, null, 2);
   },
 
   async importBackup(data) {
-    const counts = { contacts: 0, events: 0, invoices: 0, documents: 0 };
+    const counts = { contacts: 0, events: 0, invoices: 0, documents: 0, deals: 0 };
     for (const c of data.contacts || []) {
       await withStore(STORE_CONTACTS, "readwrite", (store) => store.put(c));
       counts.contacts++;
@@ -297,6 +304,10 @@ const DB = {
     for (const d of data.documents || []) {
       await withStore(STORE_DOCS, "readwrite", (store) => store.put(d));
       counts.documents++;
+    }
+    for (const deal of data.deals || []) {
+      await withStore(STORE_DEALS, "readwrite", (store) => store.put(deal));
+      counts.deals++;
     }
     if (data.settings && typeof data.settings === "object") {
       await Settings.update(data.settings);
@@ -360,6 +371,82 @@ const Events = {
   async forContact(contactId) {
     const all = await this.getAll();
     return all.filter((e) => e.contactId === contactId);
+  },
+};
+
+// ---------------- Deals (Pipeline) ----------------
+// Stage order matters — it's the left-to-right column order on the
+// Pipeline board. "won" and "lost" are terminal: a deal reaching either
+// stays there (moving it back out is still allowed, same as any stage
+// change, but nothing in the UI nudges you to).
+const DEAL_STAGES = ["new", "contacted", "proposal", "negotiation", "won", "lost"];
+
+const Deals = {
+  async getAll() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(STORE_DEALS, "readonly").objectStore(STORE_DEALS).getAll();
+      req.onsuccess = () => resolve(req.result.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async get(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(STORE_DEALS, "readonly").objectStore(STORE_DEALS).get(id);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  },
+
+  async add(deal) {
+    const now = new Date().toISOString();
+    const record = {
+      id: uid("dl"),
+      title: "",
+      contactId: null,
+      amount: 0,
+      stage: "new",
+      expectedCloseDate: "", // ISO date, optional
+      notes: "",
+      createdAt: now,
+      updatedAt: now,
+      ...deal,
+    };
+    await withStore(STORE_DEALS, "readwrite", (store) => store.put(record));
+    return record;
+  },
+
+  // Stage changes are logged onto the linked contact's own activity
+  // timeline (when there is one) — same "quiet auto-log" approach
+  // DB.update() already uses for category changes, so a deal moving
+  // through the pipeline shows up right alongside everything else that
+  // happened with that contact.
+  async update(id, patch) {
+    const existing = await this.get(id);
+    if (!existing) throw new Error("Deal not found");
+    const updated = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    await withStore(STORE_DEALS, "readwrite", (store) => store.put(updated));
+    if (patch.stage && patch.stage !== existing.stage && existing.contactId) {
+      const contact = await DB.get(existing.contactId);
+      if (contact) {
+        await DB.addActivity(existing.contactId, {
+          type: "deal_stage_changed",
+          text: t("activity_deal_stage_changed", { title: existing.title || t("deal_title_fallback"), stage: t("deal_stage_" + patch.stage) }),
+        });
+      }
+    }
+    return updated;
+  },
+
+  async remove(id) {
+    await withStore(STORE_DEALS, "readwrite", (store) => store.delete(id));
+  },
+
+  async forContact(contactId) {
+    const all = await this.getAll();
+    return all.filter((d) => d.contactId === contactId);
   },
 };
 
@@ -458,6 +545,7 @@ const Settings = {
           weekStart: 6, // 0=Sunday .. 6=Saturday — which day the Schedule calendar month view starts on
           followUpEnabled: true, // whether the Activity tab shows a "needs follow-up" nudge section
           followUpDays: 14, // days of inactivity before a customer/lead contact is flagged
+          pipelineEnabled: true, // whether the Deals/Pipeline tab, contact tab, and quick-add entry are shown at all
           contactFieldConfig: DEFAULT_CONTACT_FIELD_CONFIG,
           tags: [], // {id, name, color}
           tagsMigrated: false,

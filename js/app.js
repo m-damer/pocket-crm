@@ -2,6 +2,7 @@
 const TAB_VIEWS = {
   contacts: "view-contacts",
   schedule: "view-schedule",
+  pipeline: "view-pipeline",
   activity: "view-activity",
   more: "view-more",
 };
@@ -9,6 +10,7 @@ const TAB_VIEWS = {
 const FAB_ACTIONS = {
   contacts: () => openForm(null),
   schedule: () => openEventForm(null),
+  pipeline: () => openDealForm(null),
 };
 
 function switchTab(tab) {
@@ -22,6 +24,7 @@ function switchTab(tab) {
   fab.style.display = FAB_ACTIONS[tab] ? "flex" : "none";
   fab.onclick = FAB_ACTIONS[tab] || null;
   if (tab === "activity") { renderGlobalActivityFeed(); renderFollowUpSection(); }
+  if (tab === "pipeline") renderPipelineBoard();
 }
 
 document.querySelectorAll(".nav-item").forEach((btn) => {
@@ -365,6 +368,26 @@ document.getElementById("btn-tags-back").addEventListener("click", () => {
   closeAllScreens();
 });
 
+// ---------------- Wiring: Pipeline (deals) ----------------
+document.getElementById("btn-deal-cancel").addEventListener("click", closeAllScreens);
+document.getElementById("btn-deal-save").addEventListener("click", saveDealForm);
+document.getElementById("btn-deal-delete").addEventListener("click", deleteDealForm);
+document.querySelectorAll("#deal-stage-chips .chip").forEach((chip) => {
+  chip.addEventListener("click", () => setDealStage(chip.dataset.stage));
+});
+document.getElementById("deal-contact-row").addEventListener("click", openDealContactPicker);
+
+document.getElementById("btn-deal-picker-cancel").addEventListener("click", () => closeScreen("screen-deal-contact-picker"));
+document.getElementById("deal-picker-search").addEventListener("input", (e) => {
+  renderDealContactPickerList(e.target.value);
+});
+
+document.getElementById("pipeline-enabled-toggle").addEventListener("change", async (e) => {
+  pipelineEnabled = e.target.checked;
+  await Settings.update({ pipelineEnabled });
+  applyPipelineVisibility();
+});
+
 // ---------------- Wiring: Duplicate detection & merge ----------------
 document.getElementById("row-duplicates").addEventListener("click", openDuplicates);
 document.getElementById("btn-duplicates-back").addEventListener("click", closeAllScreens);
@@ -601,6 +624,9 @@ document.querySelectorAll("#followup-days-toggle button").forEach((btn) => {
   document.querySelectorAll("#followup-days-toggle button").forEach((b) =>
     b.classList.toggle("active", Number(b.dataset.days) === settings.followUpDays)
   );
+  pipelineEnabled = settings.pipelineEnabled !== false;
+  document.getElementById("pipeline-enabled-toggle").checked = pipelineEnabled;
+  applyPipelineVisibility();
   await Contacts.refresh();
   await Schedule.refresh();
   await renderFollowUpSection();

@@ -2,12 +2,22 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Calendar week-start, notes detail view, duplicate merge, bulk edit, follow-up nudges (this update)
+## Deals/Pipeline (this update)
+- **Pipeline board** (new tab, between Schedule and Activity): a kanban-style board — New → Contacted → Proposal → Negotiation → Won / Lost — with each column showing its deals, a running total, and the overall open pipeline value at the top. Scroll sideways between stages; tap a deal to edit it.
+- **Deals**: a title, an optional linked contact (searchable single-tap picker), an amount, a stage, an optional expected close date, and notes. Moving a linked deal to a new stage logs it to that contact's own activity timeline automatically, the same way a category change already does.
+- **Deals tab on every contact**: shows just that contact's deals, with its own "+ Add deal" that pre-links the contact. "Add deal" was also added to the existing quick-add menu on a contact's screen.
+- **On/off toggle** (More → Pipeline): switches off the Pipeline tab, the Deals tab on contacts, and "Add deal" from the quick-add menu, all at once — the feature disappears cleanly rather than just going empty. Deals data itself is untouched either way. Defaults on.
+- Included in the full JSON backup (export and restore) alongside contacts, events, and documents.
+
+Two more real bugs turned up and got fixed — both the same underlying class as the `.icon-btn[hidden]` bug from the last update, just on different elements (`#view-pipeline` and `.nav-item`, both of which set their own `display` and so outranked the browser's built-in `[hidden]` styling). Rather than patch a third individual selector, this update replaces all of those one-off fixes with a single global rule (`[hidden] { display: none !important; }`) — `hidden` now reliably means hidden everywhere in this app, closing off this entire bug class instead of leaving it to resurface with the next new component.
+
+## Calendar week-start, notes detail view, duplicate merge, bulk edit, follow-up nudges
 Five features in one pass:
 - **Calendar starts on** (More → Schedule): pick Saturday, Sunday, or Monday as the first day of the week for the Schedule tab's calendar month view. Defaults to Saturday.
 - **Notes read-only detail view**: tapping a note now opens a read-only screen first — title, type, date, full text (or an inline player for voice call notes) — with Edit and Delete icons in the header, mirroring the pattern the Schedule event detail screen already used. Edit opens the same editor as before; Delete asks to confirm first.
 - **Duplicate contacts** (More → Your data → Find duplicate contacts): scans for contacts that share a phone number, email, or full name — including transitively (A matches B by phone, B matches C by email → all three group together) — and lets you pick which one to keep. Phones, emails, addresses, websites, custom fields, tags, notes, and activity history all combine into the kept contact; the others are removed. The merge itself is logged to the kept contact's activity timeline.
 - **Bulk edit** for the Contacts multi-select (previously vCard-sharing only): a new pencil icon opens **Bulk actions** — **Add tag** (adds one or more tags to every selected contact without removing tags they already have; can create a new tag inline) or **Change category** (applies one category to the whole selection; each contact that actually changes gets the same activity-log entry as an individual edit would, no duplicates for contacts already in that category).
+
 - **Follow-up nudges** (More → Follow-ups): toggle on/off, with a 7/14/30/60-day inactivity threshold. When on, the Activity tab shows a "Needs follow-up" section above the regular feed, listing customer/lead contacts nothing has been logged against (no note, call, or edit) for longer than the threshold — lost contacts are excluded. Tap a contact there to jump straight to it.
 
 Three real bugs turned up along the way and got fixed at the root rather than worked around:

@@ -332,6 +332,8 @@ async function renderDetail() {
 
   await renderNotesTab(c.id);
 
+  if (pipelineEnabled) await renderDealsTab(c.id);
+
   setDetailTab(detailTab);
   await renderDocsTab(c.id);
 }
@@ -507,17 +509,20 @@ function openActivityMenu(contactId) {
     note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/></svg>',
     voice: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0"/><path d="M12 19v3"/></svg>',
     doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/><path d="M9 13h6M9 17h6"/></svg>',
+    deal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1.5"/><rect x="9.5" y="3" width="5" height="11" rx="1.5"/><rect x="16" y="3" width="5" height="7" rx="1.5"/></svg>',
   };
+  const rows = [
+    activityMenuRowHTML(icons.task, t("menu_add_task"), "task"),
+    activityMenuRowHTML(icons.meeting, t("menu_add_meeting"), "meeting"),
+    activityMenuRowHTML(icons.note, t("menu_add_note"), "note"),
+    activityMenuRowHTML(icons.voice, t("menu_add_voice_note"), "voice"),
+    activityMenuRowHTML(icons.doc, t("menu_add_document"), "doc"),
+  ];
+  if (pipelineEnabled) rows.push(activityMenuRowHTML(icons.deal, t("menu_add_deal"), "deal"));
   openSheet({
     title: t("btn_add_activity"),
     date: "",
-    bodyHTML: `<div class="activity-menu-list">${[
-      activityMenuRowHTML(icons.task, t("menu_add_task"), "task"),
-      activityMenuRowHTML(icons.meeting, t("menu_add_meeting"), "meeting"),
-      activityMenuRowHTML(icons.note, t("menu_add_note"), "note"),
-      activityMenuRowHTML(icons.voice, t("menu_add_voice_note"), "voice"),
-      activityMenuRowHTML(icons.doc, t("menu_add_document"), "doc"),
-    ].join("")}</div>`,
+    bodyHTML: `<div class="activity-menu-list">${rows.join("")}</div>`,
   });
   document.querySelectorAll(".activity-menu-row").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -527,6 +532,7 @@ function openActivityMenu(contactId) {
       else if (action === "meeting") openEventForm(null, { contactId, type: "meeting" });
       else if (action === "note") openNoteForm(contactId, null);
       else if (action === "voice") openNoteForm(contactId, null, { kind: "call", callMedia: "voice" });
+      else if (action === "deal") openDealForm(null, { contactId });
       else if (action === "doc") {
         setDetailTab("docs");
         setTimeout(() => {
@@ -1022,7 +1028,7 @@ function setDetailTab(tab) {
   document.querySelectorAll("#screen-detail .tab-btn").forEach((b) =>
     b.classList.toggle("active", b.dataset.dtab === tab)
   );
-  ["info", "activity", "notes", "docs"].forEach((tb) => {
+  ["info", "activity", "notes", "docs", "deals"].forEach((tb) => {
     document.getElementById("detail-tab-" + tb).hidden = tb !== tab;
   });
 }

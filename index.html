@@ -92,6 +92,15 @@
     <div class="list" id="schedule-list"></div>
   </section>
 
+  <!-- ===== PIPELINE TAB (deals board) ===== -->
+  <section class="view" id="view-pipeline" hidden>
+    <header class="header">
+      <h1 data-i18n="nav_pipeline">Pipeline</h1>
+    </header>
+    <p class="hint-text" id="pipeline-summary" style="margin:10px 16px"></p>
+    <div class="pipeline-board" id="pipeline-board"></div>
+  </section>
+
   <!-- ===== ACTIVITY TAB (global feed across all contacts) ===== -->
   <section class="view" id="view-activity" hidden>
     <header class="header">
@@ -136,6 +145,14 @@
             <button type="button" class="sel-weekday" data-days="60" data-i18n="followup_60d">60 days</button>
           </div>
         </div>
+      </div>
+      <p class="section-title" data-i18n="section_pipeline">Pipeline</p>
+      <div class="more-card" style="padding:10px 12px">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 2px;cursor:pointer">
+          <span style="font-size:14.5px;font-weight:600" data-i18n="label_pipeline_enabled">Track deals with a Pipeline board</span>
+          <input type="checkbox" id="pipeline-enabled-toggle" class="fs-toggle-input" />
+        </label>
+        <p class="hint-text" style="margin:4px 2px 2px" data-i18n="hint_pipeline_toggle">Adds a Pipeline tab, a Deals tab on each contact, and "Add deal" to the quick-add menu.</p>
       </div>
       <p class="section-title" data-i18n="section_contact_form">Contact form</p>
       <div class="more-card">
@@ -227,6 +244,10 @@
       </span>
       <span data-i18n="nav_schedule">Schedule</span>
     </button>
+    <button class="nav-item" data-tab="pipeline" id="nav-pipeline">
+      <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1.5"/><rect x="9.5" y="3" width="5" height="11" rx="1.5"/><rect x="16" y="3" width="5" height="7" rx="1.5"/></svg></span>
+      <span data-i18n="nav_pipeline">Pipeline</span>
+    </button>
     <button class="nav-item" data-tab="activity">
       <span class="nav-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
       <span data-i18n="nav_activity">Activity</span>
@@ -254,11 +275,13 @@
         <button class="tab-btn" data-dtab="activity" data-i18n="tab_activity">Activity</button>
         <button class="tab-btn" data-dtab="notes" data-i18n="tab_notes">Notes</button>
         <button class="tab-btn" data-dtab="docs" data-i18n="tab_docs">Docs</button>
+        <button class="tab-btn" data-dtab="deals" id="tab-btn-deals" data-i18n="tab_deals" hidden>Deals</button>
       </div>
       <div id="detail-tab-info"></div>
       <div id="detail-tab-activity" hidden></div>
       <div id="detail-tab-notes" hidden></div>
       <div id="detail-tab-docs" hidden></div>
+      <div id="detail-tab-deals" hidden></div>
     </div>
     <button class="fab screen-fab" id="fab-add-activity" title="Add Activity" data-i18n-title="btn_add_activity">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -399,6 +422,64 @@
       <div class="form-actions">
         <button class="btn-primary" id="btn-duplicate-merge-confirm" style="width:100%" data-i18n="btn_merge_contacts">Merge contacts</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== DEAL FORM (add/edit) ===== -->
+  <!-- Declared before screen-deal-contact-picker: that picker opens on top
+       of this form (tapping "Linked contact"), and stacking follows DOM
+       order — the later element paints on top, so the picker must come
+       after this one or its own buttons end up visually underneath and
+       unclickable (the same bug already found and fixed for notes). -->
+  <div class="screen" id="screen-deal-form">
+    <header class="header">
+      <button class="icon-btn" id="btn-deal-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+      <h1 id="deal-form-title" data-i18n="deal_form_title_new">New deal</h1>
+      <button class="icon-btn" id="btn-deal-save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></button>
+    </header>
+    <div class="view">
+      <div class="form-group"><label data-i18n="label_deal_title">Title</label><input type="text" id="deal-title" placeholder="e.g. Website redesign" data-i18n-ph="ph_deal_title" /></div>
+      <div class="form-group">
+        <label data-i18n="label_deal_contact">Linked contact</label>
+        <div class="more-row" id="deal-contact-row" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px">
+          <div class="txt"><p class="t" id="deal-contact-label" data-i18n="deal_no_contact">No contact</p></div>
+        </div>
+      </div>
+      <div class="form-group"><label data-i18n="label_deal_amount">Amount</label><input type="number" inputmode="decimal" min="0" step="0.01" id="deal-amount" placeholder="0.00" /></div>
+      <div class="form-group">
+        <label data-i18n="label_deal_stage">Stage</label>
+        <div class="chips" id="deal-stage-chips">
+          <button type="button" class="chip active" data-stage="new" data-i18n="deal_stage_new">New</button>
+          <button type="button" class="chip" data-stage="contacted" data-i18n="deal_stage_contacted">Contacted</button>
+          <button type="button" class="chip" data-stage="proposal" data-i18n="deal_stage_proposal">Proposal</button>
+          <button type="button" class="chip" data-stage="negotiation" data-i18n="deal_stage_negotiation">Negotiation</button>
+          <button type="button" class="chip" data-stage="won" data-i18n="deal_stage_won">Won</button>
+          <button type="button" class="chip" data-stage="lost" data-i18n="deal_stage_lost">Lost</button>
+        </div>
+      </div>
+      <div class="form-group"><label data-i18n="label_deal_close_date">Expected close date (optional)</label><input type="date" id="deal-close-date" /></div>
+      <div class="form-group"><label data-i18n="label_notes_optional">Notes (optional)</label><textarea id="deal-notes" placeholder="Write a note..." data-i18n-ph="ph_note_text"></textarea></div>
+      <div class="danger-zone" id="deal-delete-zone" style="display:none">
+        <button class="btn-danger" id="btn-deal-delete" data-i18n="btn_delete_deal">Delete deal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== DEAL FORM: contact picker ===== -->
+  <div class="screen" id="screen-deal-contact-picker">
+    <header class="header">
+      <button class="icon-btn" id="btn-deal-picker-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+      <h1 data-i18n="pick_contact_title">Pick a contact</h1>
+      <div style="width:36px"></div>
+    </header>
+    <div class="view">
+      <div style="padding:10px 16px 0">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input type="text" id="deal-picker-search" placeholder="Search name, company, phone..." data-i18n-ph="search_placeholder" />
+        </div>
+      </div>
+      <div id="deal-contact-picker-list" style="padding:10px 12px 4px"></div>
     </div>
   </div>
 
@@ -735,6 +816,7 @@
 <script src="js/schedule.js"></script>
 <script src="js/qr.js"></script>
 <script src="js/reports.js"></script>
+<script src="js/pipeline.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
