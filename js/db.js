@@ -546,6 +546,7 @@ const Settings = {
           followUpEnabled: true, // whether the Activity tab shows a "needs follow-up" nudge section
           followUpDays: 14, // days of inactivity before a customer/lead contact is flagged
           pipelineEnabled: true, // whether the Deals/Pipeline tab, contact tab, and quick-add entry are shown at all
+          themeMode: "system", // "light" | "dark" | "system" — which color scheme the app renders in
           contactFieldConfig: DEFAULT_CONTACT_FIELD_CONFIG,
           tags: [], // {id, name, color}
           tagsMigrated: false,

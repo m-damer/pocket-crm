@@ -67,6 +67,11 @@ const I18N_DICT = {
 
     // More tab
     more_title: "More",
+    section_appearance: "Appearance",
+    label_theme_mode: "Color scheme",
+    theme_light: "Light",
+    theme_system: "System",
+    theme_dark: "Dark",
     section_language: "Language",
     lang_english: "English",
     lang_arabic: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",
@@ -532,6 +537,11 @@ const I18N_DICT = {
     toast_reminder: "\u062a\u0630\u0643\u064a\u0631: {{title}}",
 
     more_title: "\u0627\u0644\u0645\u0632\u064a\u062f",
+    section_appearance: "\u0627\u0644\u0645\u0638\u0647\u0631",
+    label_theme_mode: "\u0646\u0638\u0627\u0645 \u0627\u0644\u0623\u0644\u0648\u0627\u0646",
+    theme_light: "\u0641\u0627\u062a\u062d",
+    theme_system: "\u0627\u0644\u0646\u0638\u0627\u0645",
+    theme_dark: "\u062f\u0627\u0643\u0646",
     section_language: "\u0627\u0644\u0644\u063a\u0629",
     lang_english: "English",
     lang_arabic: "\u0627\u0644\u0639\u0631\u0628\u064a\u0629",

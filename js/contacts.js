@@ -283,11 +283,11 @@ async function renderDetail() {
     <div class="hero-top">
       ${c.photoDataUrl
         ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover;width:56px;height:56px" />`
-        : `<div class="avatar" style="background:rgba(255,255,255,0.18)">${initials(c)}</div>`}
+        : `<div class="avatar" style="background:${CAT_META[c.category].color}">${initials(c)}</div>`}
       <div class="hero-name-block">
         <div class="hero-name-row">
           <h2>${escapeHTML(fullName(c))}</h2>
-          <span class="badge hero-badge">${catLabel(c.category)}</span>
+          <span class="badge hero-badge ${c.category}">${catLabel(c.category)}</span>
         </div>
         ${c.nickname ? `<p class="hero-nickname">"${escapeHTML(c.nickname)}"</p>` : ""}
         ${c.jobTitle || c.company ? `<p>${escapeHTML([c.jobTitle, c.company].filter(Boolean).join(" · "))}</p>` : ""}

@@ -1,3 +1,44 @@
+// ---------------- Theme mode (light / dark / system) ----------------
+// Applies Settings.themeMode by toggling data-theme on <html> — the CSS
+// in styles.css does the actual recoloring via [data-theme="dark"] and
+// the prefers-color-scheme media query. "System" means no data-theme
+// attribute at all, letting the media query decide; explicit light/dark
+// pins it regardless of the OS setting.
+let themeMediaQuery = null;
+
+function applyThemeMode(mode) {
+  const root = document.documentElement;
+  if (mode === "light" || mode === "dark") {
+    root.dataset.theme = mode;
+  } else {
+    delete root.dataset.theme;
+  }
+  try { localStorage.setItem("crm-theme", mode === "light" || mode === "dark" ? mode : ""); } catch (e) { /* ignore */ }
+  updateThemeColorMeta();
+}
+
+function updateThemeColorMeta() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const isDark = getComputedStyle(document.documentElement).colorScheme === "dark"
+    || document.documentElement.dataset.theme === "dark"
+    || (!document.documentElement.dataset.theme && themeMediaQuery && themeMediaQuery.matches);
+  meta.setAttribute("content", isDark ? "#17130b" : "#fcf2e5");
+}
+
+function initThemeModeWatcher() {
+  if (window.matchMedia) {
+    themeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    // Only matters in "system" mode (no data-theme set) — the browser's
+    // own media query already repaints the CSS automatically either way,
+    // this just keeps the OS status-bar color (theme-color meta) in sync
+    // if the system switches while the app is open.
+    themeMediaQuery.addEventListener("change", () => {
+      if (!document.documentElement.dataset.theme) updateThemeColorMeta();
+    });
+  }
+}
+
 // ---------------- Tab navigation ----------------
 const TAB_VIEWS = {
   contacts: "view-contacts",
@@ -574,6 +615,18 @@ I18N.onChange(async () => {
   updateSelectBar();
 });
 
+// ---------------- Wiring: Appearance (theme mode) ----------------
+document.querySelectorAll("#theme-mode-toggle button").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const mode = btn.dataset.theme;
+    document.querySelectorAll("#theme-mode-toggle button").forEach((b) =>
+      b.classList.toggle("active", b === btn)
+    );
+    applyThemeMode(mode);
+    await Settings.update({ themeMode: mode });
+  });
+});
+
 // ---------------- Wiring: Schedule settings (calendar week start) ----------------
 document.querySelectorAll("#week-start-toggle button").forEach((btn) => {
   btn.addEventListener("click", async () => {
@@ -611,11 +664,16 @@ document.querySelectorAll("#followup-days-toggle button").forEach((btn) => {
 
 // ---------------- Boot ----------------
 (async function boot() {
+  initThemeModeWatcher();
   await I18N.init();
   document.querySelectorAll("#lang-toggle button").forEach((b) =>
     b.classList.toggle("active", b.dataset.lang === I18N.lang)
   );
   const settings = await Settings.get();
+  applyThemeMode(settings.themeMode || "system");
+  document.querySelectorAll("#theme-mode-toggle button").forEach((b) =>
+    b.classList.toggle("active", b.dataset.theme === (settings.themeMode || "system"))
+  );
   document.querySelectorAll("#week-start-toggle button").forEach((b) =>
     b.classList.toggle("active", Number(b.dataset.weekstart) === settings.weekStart)
   );
