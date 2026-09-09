@@ -2,7 +2,13 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Contact screen overhaul + Schedule detail + Calendar (this update)
+## Bulk edit (this update)
+- The **Select** mode in Contacts (previously only used for sharing contacts as a vCard) now has a second action: a new pencil icon opens **Bulk actions**, with two options —
+- **Add tag**: pick one or more tags to add to every selected contact at once (same picker as the contact form, including creating a brand-new tag inline). Tags a contact already has are left alone — this only adds, never removes.
+- **Change category**: apply one category (Customer / Lead / Lost) to every selected contact at once. Each contact whose category actually changes gets the same "Category changed" activity-log entry it would get from editing it individually — contacts already in that category are left untouched, no duplicate log entries.
+- Fixed a real (if minor) bug found while building this: several header icons (like the vCard-share button) used the `hidden` attribute to hide themselves outside Select mode, but a CSS rule for `.icon-btn` was silently overriding it, so they were never actually hidden. Fixed at the root, the same way the `.view[hidden]` rule already does it elsewhere in the stylesheet.
+
+## Contact screen overhaul + Schedule detail + Calendar
 - **Hero card restructured**: name and category badge share one line; nickname sits right under the name; job title/company below that; tags below that
 - **Address block**: Directions button and address text share one row, with Directions first so it's never pushed off-screen by a long address — and it links only to the Google Maps URL you actually entered
 - **"Add Activity" floating button** on the contact screen: tap it for a quick menu — Add task, Add meeting, Add note, Add voice note, Add document — each pre-filled and linked to that contact

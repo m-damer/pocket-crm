@@ -88,6 +88,13 @@ input, select, textarea { font-family: inherit; }
 }
 .icon-btn:active { background: rgba(255,255,255,0.15); }
 .icon-btn svg { width: 22px; height: 22px; }
+/* This app sets `hidden` on several .icon-btn elements to toggle their
+   visibility (e.g. the select-mode action buttons) — but .icon-btn's own
+   `display: flex` above outranks the browser's built-in [hidden] rule
+   (author styles beat user-agent styles regardless of specificity), so
+   without this override `hidden` had no visible effect on any icon button.
+   Same fix, same reason, as the .view[hidden] rule below. */
+.icon-btn[hidden] { display: none; }
 
 /* ---------- Main content area ---------- */
 .view {

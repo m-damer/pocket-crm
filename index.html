@@ -35,6 +35,9 @@
   <section class="view" id="view-contacts">
     <header class="header">
       <h1 id="contacts-header-title" data-i18n="contacts_title">Contacts</h1>
+      <button class="icon-btn" id="btn-select-bulk-edit" title="Bulk edit selected" data-i18n-title="btn_bulk_edit_title" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+      </button>
       <button class="icon-btn" id="btn-select-share" title="Share selected" data-i18n-title="btn_share_selected_title" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
       </button>
@@ -336,6 +339,51 @@
     <div class="view">
       <p class="hint-text" style="margin:14px 16px" data-i18n="hint_tags">Tags you create here are available to pick from on any contact.</p>
       <div id="tags-manage-list" style="padding:4px 12px"></div>
+    </div>
+  </div>
+
+  <!-- ===== BULK EDIT: add tag to selected contacts ===== -->
+  <div class="screen" id="screen-bulk-tag">
+    <header class="header">
+      <button class="icon-btn" id="btn-bulk-tag-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+      <h1 data-i18n="bulk_tag_title">Add tag</h1>
+      <div style="width:36px"></div>
+    </header>
+    <div class="view">
+      <p class="hint-text" id="bulk-tag-hint" style="margin:14px 16px"></p>
+      <div class="tag-dropdown" style="margin:0 16px">
+        <div class="tag-dropdown-list" id="bulk-tag-list"></div>
+        <div class="tag-dropdown-new">
+          <input type="text" id="bulk-new-tag-name" placeholder="New tag name" data-i18n-ph="ph_new_tag_name" />
+          <div class="tag-color-swatches" id="bulk-new-tag-colors"></div>
+          <button type="button" class="btn-secondary" id="btn-bulk-add-new-tag" style="padding:7px 14px;align-self:flex-start" data-i18n="btn_add">+ Add</button>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-bulk-tag-apply" style="width:100%" data-i18n="btn_apply">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BULK EDIT: change category of selected contacts ===== -->
+  <div class="screen" id="screen-bulk-category">
+    <header class="header">
+      <button class="icon-btn" id="btn-bulk-category-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+      <h1 data-i18n="bulk_category_title">Change category</h1>
+      <div style="width:36px"></div>
+    </header>
+    <div class="view">
+      <p class="hint-text" id="bulk-category-hint" style="margin:14px 16px"></p>
+      <div class="form-group">
+        <div class="segmented" id="bulk-category-picker">
+          <button type="button" class="sel-customer active" data-cat="customer" data-i18n="cat_customer">Customer</button>
+          <button type="button" class="sel-lead" data-cat="lead" data-i18n="cat_lead">Lead</button>
+          <button type="button" class="sel-lost" data-cat="lost" data-i18n="cat_lost">Lost</button>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-bulk-category-apply" style="width:100%" data-i18n="btn_apply">Apply</button>
+      </div>
     </div>
   </div>
 

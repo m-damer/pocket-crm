@@ -91,6 +91,7 @@ function updateSelectBar() {
     : t("contacts_title");
   document.getElementById("btn-export").hidden = Contacts.selectMode;
   document.getElementById("btn-select-share").hidden = !Contacts.selectMode;
+  document.getElementById("btn-select-bulk-edit").hidden = !Contacts.selectMode;
   const selectBtn = document.getElementById("btn-select-mode");
   selectBtn.title = Contacts.selectMode ? t("btn_cancel_select_title") : t("btn_select_title");
   selectBtn.innerHTML = Contacts.selectMode
@@ -139,6 +140,51 @@ async function shareSelectedContacts() {
   });
 }
 document.getElementById("btn-select-share").addEventListener("click", shareSelectedContacts);
+
+// ---------------- Wiring: bulk edit (add tag / change category) for selected contacts ----------------
+// Reuses the same bottom sheet as the "Add Activity" quick menu (openSheet /
+// activityMenuRowHTML in contacts.js) — just with two different rows.
+function openBulkActionsMenu() {
+  if (Contacts.selectedIds.size === 0) {
+    showToast(t("toast_select_one_contact"));
+    return;
+  }
+  openSheet({
+    title: t("bulk_actions_title"),
+    date: "",
+    bodyHTML: `<div class="activity-menu-list">${[
+      activityMenuRowHTML(
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L11 22.99a2 2 0 01-2.83 0L1 15.83a2 2 0 010-2.83L10.59 3.41A2 2 0 0112 3H21a1 1 0 011 1v9a2 2 0 01-.59 1.41z"/><circle cx="16.5" cy="8.5" r="1.5"/></svg>',
+        t("menu_bulk_add_tag"),
+        "tag"
+      ),
+      activityMenuRowHTML(
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>',
+        t("menu_bulk_change_category"),
+        "category"
+      ),
+    ].join("")}</div>`,
+  });
+  document.querySelectorAll(".activity-menu-row").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeNoteSheet();
+      const action = btn.dataset.action;
+      if (action === "tag") openBulkTagPicker();
+      else if (action === "category") openBulkCategoryPicker();
+    });
+  });
+}
+document.getElementById("btn-select-bulk-edit").addEventListener("click", openBulkActionsMenu);
+
+document.getElementById("btn-bulk-tag-cancel").addEventListener("click", () => closeScreen("screen-bulk-tag"));
+document.getElementById("btn-bulk-tag-apply").addEventListener("click", applyBulkTag);
+document.getElementById("btn-bulk-add-new-tag").addEventListener("click", addNewTagFromBulkPicker);
+
+document.getElementById("btn-bulk-category-cancel").addEventListener("click", () => closeScreen("screen-bulk-category"));
+document.getElementById("btn-bulk-category-apply").addEventListener("click", applyBulkCategory);
+document.querySelectorAll("#bulk-category-picker button").forEach((b) => {
+  b.addEventListener("click", () => setBulkCategory(b.dataset.cat));
+});
 
 // ---------------- Wiring: Photo picker + crop ----------------
 document.getElementById("photo-input").addEventListener("change", (e) => {

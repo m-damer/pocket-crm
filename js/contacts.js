@@ -1145,6 +1145,122 @@ function wireTagPickerOnce() {
   document.getElementById("btn-add-new-tag").addEventListener("click", addNewTagFromForm);
 }
 
+// ---------------- Bulk edit: add tag to selected contacts ----------------
+// Mirrors the contact form's tag picker above, but applies to every
+// currently-selected contact instead of one in-progress form.
+let bulkTagSelected = [];
+
+async function renderBulkTagList() {
+  const allTags = await Tags.getAll();
+  const wrap = document.getElementById("bulk-tag-list");
+  if (allTags.length === 0) {
+    wrap.innerHTML = `<p class="hint-text" style="margin:2px 0 0">${t("no_tags_dropdown")}</p>`;
+    return;
+  }
+  wrap.innerHTML = allTags.map((tg) => `
+    <label class="tag-dropdown-row">
+      <input type="checkbox" class="bulk-tag-check" value="${tg.id}" ${bulkTagSelected.includes(tg.id) ? "checked" : ""} />
+      <span class="tag-dot" style="background:${tg.color}"></span>
+      <span>${escapeHTML(tg.name)}</span>
+    </label>
+  `).join("");
+  wrap.querySelectorAll(".bulk-tag-check").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) {
+        if (!bulkTagSelected.includes(cb.value)) bulkTagSelected.push(cb.value);
+      } else {
+        bulkTagSelected = bulkTagSelected.filter((id) => id !== cb.value);
+      }
+    });
+  });
+}
+
+async function addNewTagFromBulkPicker() {
+  const nameInput = document.getElementById("bulk-new-tag-name");
+  const name = nameInput.value.trim();
+  if (!name) { showToast(t("toast_enter_tag_name")); return; }
+  const allTags = await Tags.getAll();
+  const dupe = allTags.find((tg) => tg.name.toLowerCase() === name.toLowerCase());
+  if (dupe) {
+    if (!bulkTagSelected.includes(dupe.id)) bulkTagSelected.push(dupe.id);
+    showToast(t("toast_tag_exists_selected"));
+  } else {
+    const colorsWrap = document.getElementById("bulk-new-tag-colors");
+    const tag = await Tags.add(name, colorsWrap.dataset.selected);
+    bulkTagSelected.push(tag.id);
+  }
+  nameInput.value = "";
+  await renderBulkTagList();
+}
+
+async function openBulkTagPicker() {
+  bulkTagSelected = [];
+  document.getElementById("bulk-tag-hint").textContent = t("hint_bulk_tag_picker", {
+    count: I18N.plural(Contacts.selectedIds.size, "contact_count", "contact_count_plural"),
+  });
+  await renderBulkTagList();
+  renderColorSwatches("bulk-new-tag-colors", TAG_COLOR_PALETTE[0]);
+  showScreen("screen-bulk-tag");
+}
+
+// Adds the chosen tag(s) to every selected contact, leaving any tags a
+// contact already has untouched (a merge, not a replace).
+async function applyBulkTag() {
+  if (bulkTagSelected.length === 0) {
+    showToast(t("toast_pick_one_tag"));
+    return;
+  }
+  const ids = Array.from(Contacts.selectedIds);
+  for (const id of ids) {
+    const c = await DB.get(id);
+    if (!c) continue;
+    const merged = Array.from(new Set([...(c.tags || []), ...bulkTagSelected]));
+    if (merged.length !== (c.tags || []).length) {
+      await DB.update(id, { tags: merged });
+    }
+  }
+  showToast(t("toast_bulk_tag_applied", {
+    count: I18N.plural(ids.length, "contact_count", "contact_count_plural"),
+  }));
+  closeAllScreens();
+  Contacts.exitSelectMode();
+  await Contacts.refresh();
+}
+
+// ---------------- Bulk edit: change category of selected contacts ----------------
+let bulkCategorySelected = "customer";
+
+function setBulkCategory(cat) {
+  bulkCategorySelected = cat;
+  document.querySelectorAll("#bulk-category-picker button").forEach((b) =>
+    b.classList.toggle("active", b.dataset.cat === cat)
+  );
+}
+
+function openBulkCategoryPicker() {
+  document.getElementById("bulk-category-hint").textContent = t("hint_bulk_category_picker", {
+    count: I18N.plural(Contacts.selectedIds.size, "contact_count", "contact_count_plural"),
+  });
+  setBulkCategory("customer");
+  showScreen("screen-bulk-category");
+}
+
+// DB.update() already auto-logs a "category changed" activity entry per
+// contact when the category actually changes (see db.js) — bulk apply
+// gets that timeline logging for free, one entry per affected contact.
+async function applyBulkCategory() {
+  const ids = Array.from(Contacts.selectedIds);
+  for (const id of ids) {
+    await DB.update(id, { category: bulkCategorySelected });
+  }
+  showToast(t("toast_bulk_category_applied", {
+    count: I18N.plural(ids.length, "contact_count", "contact_count_plural"),
+  }));
+  closeAllScreens();
+  Contacts.exitSelectMode();
+  await Contacts.refresh();
+}
+
 // ---------------- Add / Edit form ----------------
 let formEditingId = null;
 let formCategory = "customer";
