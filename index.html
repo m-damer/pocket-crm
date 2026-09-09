@@ -15,11 +15,24 @@
       document.documentElement.dir = "rtl";
     }
   } catch (e) { /* localStorage unavailable — falls back to English until DB loads */ }
+
+  // Same instant-paint trick for color scheme: without this, a Dark-mode
+  // user would see a flash of the light theme on every launch while
+  // Settings (in IndexedDB) loads asynchronously in js/app.js.
+  try {
+    var theme = localStorage.getItem("crm-theme"); // "light" | "dark" | null (= follow system)
+    if (theme === "light" || theme === "dark") {
+      document.documentElement.dataset.theme = theme;
+    }
+    var isDark = theme === "dark" || (theme !== "light" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", isDark ? "#17130b" : "#fcf2e5");
+  } catch (e) { /* falls back to the static light theme-color below until Settings loads */ }
 })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
 <title>Cyberomeda CRM</title>
-<meta name="theme-color" content="#115F45" />
+<meta name="theme-color" content="#fcf2e5" />
 <meta name="description" content="Offline-first CRM for managing contacts, leads and customers." />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -114,6 +127,15 @@
   <section class="view" id="view-more" hidden>
     <header class="header"><h1 data-i18n="more_title">More</h1></header>
     <div class="more-section">
+      <p class="section-title" data-i18n="section_appearance">Appearance</p>
+      <div class="more-card" style="padding:10px 12px">
+        <p style="font-size:12.5px;color:var(--text-muted);margin:2px 2px 8px" data-i18n="label_theme_mode">Color scheme</p>
+        <div class="segmented" id="theme-mode-toggle" style="width:100%">
+          <button type="button" class="sel-weekday" data-theme="light" data-i18n="theme_light">Light</button>
+          <button type="button" class="sel-weekday active" data-theme="system" data-i18n="theme_system">System</button>
+          <button type="button" class="sel-weekday" data-theme="dark" data-i18n="theme_dark">Dark</button>
+        </div>
+      </div>
       <p class="section-title" data-i18n="section_language">Language</p>
       <div class="more-card" style="padding:10px 12px">
         <div class="segmented" id="lang-toggle" style="width:100%">
@@ -265,7 +287,7 @@
       <h1 data-i18n="detail_title">Contact</h1>
       <button class="icon-btn" id="btn-detail-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
       <button class="icon-btn" id="btn-detail-save-to-phone" title="Save to phone" data-i18n-title="qa_save_to_phone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/><path d="M12 7v6"/><path d="M9 10l3 3 3-3"/></svg></button>
-      <button class="icon-btn" id="btn-delete-contact" style="color:#F3C9C9" title="Delete contact" data-i18n-title="btn_delete_contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+      <button class="icon-btn" id="btn-delete-contact" style="color:var(--md-sys-color-error)" title="Delete contact" data-i18n-title="btn_delete_contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
     </header>
     <div class="view">
       <div class="detail-hero" id="detail-hero"></div>
@@ -540,7 +562,7 @@
       <button class="icon-btn icon-back" id="btn-note-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       <h1 data-i18n="note_detail_title">Note</h1>
       <button class="icon-btn" id="btn-note-detail-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
-      <button class="icon-btn" id="btn-note-detail-delete" style="color:#F3C9C9" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+      <button class="icon-btn" id="btn-note-detail-delete" style="color:var(--md-sys-color-error)" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
     </header>
     <div class="view">
       <div id="note-detail-content" style="padding:14px 16px"></div>
@@ -657,7 +679,7 @@
     <header class="header">
       <button class="icon-btn icon-back" id="btn-qr-view-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       <h1 id="qr-view-label" data-i18n="qr_code_fallback">QR code</h1>
-      <button class="icon-btn" id="btn-qr-view-delete" style="color:#F3C9C9" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
+      <button class="icon-btn" id="btn-qr-view-delete" style="color:var(--md-sys-color-error)" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
     </header>
     <div class="view">
       <div class="qr-canvas-wrap">
@@ -736,7 +758,7 @@
       <button class="icon-btn icon-back" id="btn-ev-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       <h1 data-i18n="event_detail_title">Details</h1>
       <button class="icon-btn" id="btn-ev-detail-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
-      <button class="icon-btn" id="btn-ev-detail-delete" style="color:#F3C9C9" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+      <button class="icon-btn" id="btn-ev-detail-delete" style="color:var(--md-sys-color-error)" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
     </header>
     <div class="view">
       <div id="event-detail-content"></div>

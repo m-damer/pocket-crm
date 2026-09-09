@@ -2,7 +2,22 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Deals/Pipeline (this update)
+## Material 3 visual redesign (this update)
+The whole app now looks and feels like a real Google product — Material Design 3 (specifically "Material 3 Expressive," Google's 2025-2026 update), not just a color change.
+
+- **Real color science, not a guess**: the warm cream/gold palette was generated with Google's own `material-color-utilities` library — the exact algorithm Android's dynamic color system uses — from a single seed color, using the "TonalSpot" scheme. Light and dark are mathematically derived from the same seed, so they can never drift out of sync with each other.
+- **A token-based theme system, built for future recoloring**: every color in the app resolves from `--md-sys-color-*` custom properties (Google's own naming convention) defined once at the top of `css/styles.css`. Changing the app's whole look in the future is changing one seed value in a small script and pasting the regenerated numbers back in — nothing else in the app needs to change.
+- **Dark mode**, plus a **Light / Dark / System** picker in More → Appearance. "System" follows the phone's own setting live, including if it changes while the app is open.
+- **Every component rebuilt to real M3 shapes and behavior**: buttons (filled/outlined/danger), the FAB, chips, segmented controls, switches (distinct from checkboxes — M3 treats on/off settings and multi-select lists as different components), text fields, dropdowns/selects, cards, and bottom sheets.
+- **The top app bar and contact detail header are now neutral** — they blend into the page like stock Google apps do (Contacts, Gmail, Photos), rather than a bold color block. Color now lives in the FAB, active nav state, category badges, and chips instead — matching the reference screenshot this redesign was built from.
+- **Real bugs found and fixed along the way**, not just restyled:
+  - Several places (deal amount, every date/time picker) had *zero* CSS coverage at all — native unstyled browser defaults, invisible until this pass actually exercised every input type.
+  - The contact detail header's category badge was missing its category class in the markup — invisible before because the old bold header's own override happened to mask it; the once-neutral header exposed it.
+  - The contact detail avatar's translucent-white background was designed for the old dark header — nearly invisible against the new light one; now uses the same solid category color the rest of the app already uses.
+  - The "Lead" badge's pale container color was, by coincidence, almost the same tone as the new page background — added a subtle border to every badge (using each one's own color) so this class of near-invisible-chip bug can't recur for any category, current or future.
+  - A dozen-plus hardcoded colors (header text, toast, buttons, checkmarks, calendar dots, delete icons, bottom-sheet scrim) were still using the old emerald brand's literal hex values or plain white/black — invisible or badly-contrasted the moment dark mode or the new palette was involved. All now resolve through the token system.
+
+## Deals/Pipeline
 - **Pipeline board** (new tab, between Schedule and Activity): a kanban-style board — New → Contacted → Proposal → Negotiation → Won / Lost — with each column showing its deals, a running total, and the overall open pipeline value at the top. Scroll sideways between stages; tap a deal to edit it.
 - **Deals**: a title, an optional linked contact (searchable single-tap picker), an amount, a stage, an optional expected close date, and notes. Moving a linked deal to a new stage logs it to that contact's own activity timeline automatically, the same way a category change already does.
 - **Deals tab on every contact**: shows just that contact's deals, with its own "+ Add deal" that pre-links the contact. "Add deal" was also added to the existing quick-add menu on a contact's screen.
