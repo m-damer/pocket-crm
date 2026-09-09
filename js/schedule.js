@@ -71,6 +71,14 @@ const Schedule = {
   renderList() {
     const el = document.getElementById("schedule-list");
     const items = this.visible();
+    // Pre-existing bug fixed here: the calendar month view (and its "days
+    // with events" dots) used to only render below this point, so an empty
+    // events list — a fresh install, or just an empty filter like "today"
+    // with nothing on it — meant the calendar never rendered at all, not
+    // even a blank grid. Calendar and day-events highlighting are
+    // unconditional now; only the list-below-the-calendar is filter-empty-aware.
+    renderCalendar();
+    renderCalendarDayEvents();
     if (items.length === 0) {
       el.innerHTML = `
         <div class="empty-state">
@@ -122,13 +130,11 @@ const Schedule = {
         await Schedule.refresh();
       });
     });
-
-    renderCalendar();
-    renderCalendarDayEvents();
   },
 
   async refresh() {
     await this.load();
+    await loadCalendarWeekStart();
     this.renderList();
   },
 
@@ -338,6 +344,15 @@ async function deleteEventFromDetail() {
 // ---------------- Calendar month view ----------------
 let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let calendarSelectedDay = null; // "YYYY-MM-DD" or null
+let calendarWeekStart = 6; // 0=Sunday..6=Saturday, loaded from Settings (default Saturday)
+
+// Re-reads the configured week-start day from Settings. Cheap enough to call
+// every refresh so a change made in More → Schedule takes effect immediately,
+// without needing a special-cased "settings changed" event just for this.
+async function loadCalendarWeekStart() {
+  const s = await Settings.get();
+  calendarWeekStart = s.weekStart !== undefined ? s.weekStart : 6;
+}
 
 function dayKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -355,7 +370,9 @@ function eventCountsByDay() {
 function renderCalendarWeekdays() {
   const wrap = document.getElementById("calendar-weekdays");
   if (!wrap) return;
-  const base = new Date(2023, 0, 1); // a Sunday — week always starts Sunday
+  // 2023-01-01 was a Sunday — shift forward by the configured week-start day
+  // (0=Sunday..6=Saturday) to get the right label order.
+  const base = new Date(2023, 0, 1 + calendarWeekStart);
   const labels = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(base.getTime() + i * 86400000);
@@ -373,7 +390,7 @@ function renderCalendar() {
   renderCalendarWeekdays();
 
   const year = calendarMonth.getFullYear(), month = calendarMonth.getMonth();
-  const startOffset = new Date(year, month, 1).getDay(); // 0 = Sunday
+  const startOffset = (new Date(year, month, 1).getDay() - calendarWeekStart + 7) % 7; // days before the 1st, relative to the configured week start
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysInPrevMonth = new Date(year, month, 0).getDate();
   const counts = eventCountsByDay();

@@ -455,6 +455,9 @@ const Settings = {
           businessName: "", address: "", phone: "", email: "",
           currency: "USD", logoDataUrl: "", invoiceCounter: 0, proposalCounter: 0,
           language: "en", // "en" | "ar" — active UI language, mirrored to localStorage for instant paint
+          weekStart: 6, // 0=Sunday .. 6=Saturday — which day the Schedule calendar month view starts on
+          followUpEnabled: true, // whether the Activity tab shows a "needs follow-up" nudge section
+          followUpDays: 14, // days of inactivity before a customer/lead contact is flagged
           contactFieldConfig: DEFAULT_CONTACT_FIELD_CONFIG,
           tags: [], // {id, name, color}
           tagsMigrated: false,
@@ -649,5 +652,134 @@ const Documents = {
 
   async remove(id) {
     await withStore(STORE_DOCS, "readwrite", (store) => store.delete(id));
+  },
+};
+
+// ---------------- Duplicate detection & merge ----------------
+function dupNormPhone(v) { return String(v || "").replace(/\D/g, ""); }
+function dupNormEmail(v) { return String(v || "").trim().toLowerCase(); }
+function dupNormName(c) {
+  return [c.firstName, c.lastName].map((x) => String(x || "").trim().toLowerCase()).filter(Boolean).join(" ");
+}
+
+// The signals a contact could be matched on: any phone (7+ digits, to avoid
+// matching on short/blank values), any email, or the full name. Prefixed so
+// a phone digit-string can never collide with an email or name string.
+function dupKeysForContact(c) {
+  const keys = [];
+  (c.phones || []).forEach((p) => { const n = dupNormPhone(p.value); if (n.length >= 7) keys.push("phone:" + n); });
+  (c.emails || []).forEach((e) => { const n = dupNormEmail(e.value); if (n) keys.push("email:" + n); });
+  const n = dupNormName(c);
+  if (n) keys.push("name:" + n);
+  return keys;
+}
+
+const Duplicates = {
+  // Groups contacts that share a phone, email, or full name — transitively,
+  // so if A matches B by phone and B matches C by email, A/B/C land in one
+  // group even though A and C share nothing directly. Pure/sync: works on
+  // an already-loaded contacts array, no DB access.
+  findGroups(contacts) {
+    const parent = {};
+    const find = (x) => { while (parent[x] && parent[x] !== x) x = parent[x]; return x; };
+    const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+    contacts.forEach((c) => { parent[c.id] = c.id; });
+
+    const firstSeenBy = {}; // key -> contact id
+    contacts.forEach((c) => {
+      dupKeysForContact(c).forEach((k) => {
+        if (firstSeenBy[k] !== undefined) union(c.id, firstSeenBy[k]);
+        else firstSeenBy[k] = c.id;
+      });
+    });
+
+    const groups = {};
+    contacts.forEach((c) => {
+      const root = find(c.id);
+      (groups[root] = groups[root] || []).push(c);
+    });
+    return Object.values(groups).filter((g) => g.length > 1);
+  },
+
+  // Which signal type(s) actually caused a group to form — a key only
+  // counts if 2+ members share it (a lone name/phone isn't a "reason").
+  matchReasons(group) {
+    const counts = {};
+    group.forEach((c) => {
+      new Set(dupKeysForContact(c)).forEach((k) => { counts[k] = (counts[k] || 0) + 1; });
+    });
+    const reasons = new Set();
+    Object.keys(counts).forEach((k) => { if (counts[k] >= 2) reasons.add(k.split(":")[0]); }); // "phone" | "email" | "name"
+    return Array.from(reasons);
+  },
+
+  // Merges every member of a duplicate group into `primaryId`: multi-value
+  // fields (phones/emails/addresses/websites/custom fields/tags) are
+  // unioned and deduped; notes and activity-log entries are combined;
+  // blank scalar fields on the primary are filled in from the others. The
+  // non-primary contacts are then deleted.
+  async merge(primaryId, memberIds) {
+    const members = [];
+    for (const id of memberIds) {
+      const c = await this._getRaw(id);
+      if (c) members.push(c);
+    }
+    const primary = members.find((m) => m.id === primaryId);
+    const others = members.filter((m) => m.id !== primaryId);
+    if (!primary || others.length === 0) return null;
+
+    const unionList = (key, dedupeKeyFn) => {
+      const seen = new Set();
+      const out = [];
+      [primary, ...others].forEach((c) => (c[key] || []).forEach((item) => {
+        const dk = dedupeKeyFn(item);
+        if (dk && seen.has(dk)) return;
+        if (dk) seen.add(dk);
+        out.push(item);
+      }));
+      return out;
+    };
+
+    const mergedNotes = [primary, ...others]
+      .flatMap((c) => c.notesList || [])
+      .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+    const now = new Date().toISOString();
+    const mergedActivities = [
+      {
+        id: uid("a"), date: now, type: "contacts_merged",
+        text: t("activity_contacts_merged", { count: I18N.plural(others.length, "contact_count", "contact_count_plural") }),
+      },
+      ...[primary, ...others].flatMap((c) => c.activities || []),
+    ].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+    const firstTruthy = (key) => primary[key] || others.map((o) => o[key]).find(Boolean) || "";
+
+    const patch = {
+      phones: unionList("phones", (p) => dupNormPhone(p.value)),
+      emails: unionList("emails", (e) => dupNormEmail(e.value)),
+      addresses: unionList("addresses", (a) => (a.value || "").trim().toLowerCase()),
+      websites: unionList("websites", (w) => (w.value || "").trim().toLowerCase()),
+      customFields: unionList("customFields", (f) => (f.label || "").trim().toLowerCase() + "|" + (f.value || "").trim().toLowerCase()),
+      tags: Array.from(new Set([...(primary.tags || []), ...others.flatMap((o) => o.tags || [])])),
+      notesList: mergedNotes,
+      activities: mergedActivities,
+      nickname: firstTruthy("nickname"),
+      company: firstTruthy("company"),
+      jobTitle: firstTruthy("jobTitle"),
+      birthday: firstTruthy("birthday"),
+      photoDataUrl: firstTruthy("photoDataUrl"),
+    };
+
+    await DB.update(primaryId, patch);
+    for (const o of others) await DB.remove(o.id);
+    return primaryId;
+  },
+
+  // Reads a contact without DB.get()'s auto-migration side effect firing
+  // twice mid-merge — functionally the same as DB.get, kept separate so the
+  // merge's own intent (plain read) stays clear at each call site.
+  async _getRaw(id) {
+    return DB.get(id);
   },
 };

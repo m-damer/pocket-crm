@@ -372,7 +372,7 @@ function wireAudioResume(audioEl, key) {
 function activityTypeBadge(a) {
   if (a.noteKind === "call") return a.callMedia === "voice" ? t("activity_type_call_voice") : t("activity_type_call_text");
   if (a.noteKind === "note") return t("activity_type_note");
-  if (a.type === "category_changed") return t("activity_type_update");
+  if (a.type === "category_changed" || a.type === "contacts_merged") return t("activity_type_update");
   return t("activity_type_contact");
 }
 function activityCardTitle(a) {
@@ -555,6 +555,67 @@ async function allActivitiesFlat() {
   return out;
 }
 
+// ---------------- Follow-up nudges ----------------
+// A contact "needs follow-up" once nothing has been logged against it (a
+// note, a call, a category change — anything in its own activity timeline)
+// for longer than the configured threshold. Lost contacts are excluded —
+// there's nothing left to follow up on once that's closed out.
+function lastActivityDate(c) {
+  return (c.activities && c.activities[0] && c.activities[0].date) || c.createdAt;
+}
+
+function daysSince(iso) {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+async function findFollowUpContacts() {
+  const settings = await Settings.get();
+  if (!settings.followUpEnabled) return [];
+  const threshold = settings.followUpDays || 14;
+  const all = await DB.getAll();
+  return all
+    .filter((c) => c.category !== "lost")
+    .map((c) => ({ contact: c, days: daysSince(lastActivityDate(c)) }))
+    .filter((x) => x.days >= threshold)
+    .sort((a, b) => b.days - a.days); // most overdue first
+}
+
+function renderFollowUpRowHTML(c, days) {
+  return `
+    <div class="contact-row" data-id="${c.id}" style="margin-bottom:8px">
+      ${c.photoDataUrl
+        ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover" />`
+        : `<div class="avatar" style="background:${CAT_META[c.category].color}">${initials(c)}</div>`}
+      <div class="contact-info">
+        <p class="contact-name">${escapeHTML(fullName(c))}</p>
+        <p class="contact-sub">${I18N.plural(days, "followup_day_ago", "followup_days_ago")}</p>
+      </div>
+      <span class="badge ${c.category}">${catLabel(c.category)}</span>
+    </div>
+  `;
+}
+
+async function renderFollowUpSection() {
+  const wrap = document.getElementById("followup-nudges-section");
+  if (!wrap) return;
+  const due = await findFollowUpContacts();
+  if (due.length === 0) {
+    wrap.innerHTML = "";
+    return;
+  }
+  wrap.innerHTML = `
+    <p class="section-title" style="margin:14px 16px 6px">${t("followup_section_title", {
+      count: I18N.plural(due.length, "contact_count", "contact_count_plural"),
+    })}</p>
+    <div style="padding:0 16px">
+      ${due.map((x) => renderFollowUpRowHTML(x.contact, x.days)).join("")}
+    </div>
+  `;
+  wrap.querySelectorAll(".contact-row").forEach((row) => {
+    row.addEventListener("click", () => openDetail(row.dataset.id));
+  });
+}
+
 async function renderGlobalActivityFeed() {
   const wrap = document.getElementById("global-activity-list");
   const all = await allActivitiesFlat();
@@ -676,8 +737,55 @@ async function renderNotesTab(contactId) {
   `;
   document.getElementById("btn-add-note").addEventListener("click", () => openNoteForm(contactId, null));
   wrap.querySelectorAll(".note-card").forEach((card) => {
-    card.addEventListener("click", () => openNoteForm(contactId, card.dataset.id));
+    card.addEventListener("click", () => openNoteDetail(contactId, card.dataset.id));
   });
+}
+
+// ---------------- Note detail (read-only view, opened by tapping a note card) ----------------
+// Mirrors the Schedule event pattern: tapping the card opens this read-only
+// screen first, with Edit and Delete icons in the header, rather than
+// jumping straight into the editable form.
+let noteDetailContactId = null;
+let noteDetailId = null;
+
+function renderNoteDetailContent(n) {
+  const isCall = n.kind === "call";
+  const kindLabel = isCall ? (n.callMedia === "voice" ? t("note_kind_call_voice") : t("note_kind_call_text")) : t("note_kind_note");
+  const isVoice = isCall && n.callMedia === "voice";
+  return `
+    <div class="field-list">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+        <p class="section-title" style="margin:0">${escapeHTML(n.title || (isCall ? t("note_title_fallback_call") : t("note_title_fallback_note")))}</p>
+        <span class="note-kind-badge">${kindLabel}</span>
+      </div>
+      <p class="label" style="margin-top:6px">${fmtDate(n.updatedAt)}${n.updatedAt !== n.createdAt ? t("note_edited_suffix") : ""}</p>
+      ${isVoice
+        ? `<audio controls preload="metadata" data-audio-key="${n.id}-detail" src="${n.audioDataUrl}" style="width:100%;margin-top:14px"></audio>`
+        : (n.text ? `<p class="value" style="white-space:pre-wrap;margin-top:14px">${escapeHTML(n.text)}</p>` : "")}
+    </div>
+  `;
+}
+
+async function openNoteDetail(contactId, noteId) {
+  const c = await DB.get(contactId);
+  const note = c && (c.notesList || []).find((n) => n.id === noteId);
+  if (!note) return;
+  noteDetailContactId = contactId;
+  noteDetailId = noteId;
+  document.getElementById("note-detail-content").innerHTML = renderNoteDetailContent(note);
+  if (note.kind === "call" && note.callMedia === "voice") {
+    wireAudioResume(document.querySelector("#note-detail-content audio"), note.id + "-detail");
+  }
+  showScreen("screen-note-detail");
+}
+
+async function deleteNoteFromDetail() {
+  if (!noteDetailContactId || !noteDetailId) return;
+  if (!confirm(t("confirm_delete_note"))) return;
+  await ContactNotes.remove(noteDetailContactId, noteDetailId);
+  showToast(t("toast_note_deleted"));
+  closeScreen("screen-note-detail");
+  await renderDetail();
 }
 
 // ---------------- Note editor (add/edit a note or call note) ----------------
@@ -891,6 +999,10 @@ async function saveNoteForm() {
     showToast(noteFormKind === "call" ? t("toast_call_note_added") : t("toast_note_added"));
   }
   closeScreen("screen-note-form");
+  // If this edit was opened from the read-only note detail screen, that's
+  // still open underneath (screens stack) and would otherwise show stale
+  // content — close it too so Save always lands back on the Notes tab.
+  closeScreen("screen-note-detail");
   await renderDetail();
   await Contacts.refresh();
 }
@@ -901,6 +1013,7 @@ async function deleteNoteForm() {
   await ContactNotes.remove(noteFormContactId, noteFormEditingId);
   showToast(t("toast_note_deleted"));
   closeScreen("screen-note-form");
+  closeScreen("screen-note-detail");
   await renderDetail();
 }
 
@@ -1258,6 +1371,91 @@ async function applyBulkCategory() {
   }));
   closeAllScreens();
   Contacts.exitSelectMode();
+  await Contacts.refresh();
+}
+
+// ---------------- Duplicate detection & merge ----------------
+let duplicateGroups = [];
+let activeDuplicateGroup = null; // the group array currently being reviewed
+let duplicateMergePrimaryId = null;
+
+function duplicateReasonLabel(reasons) {
+  return reasons.map((r) => {
+    if (r === "phone") return t("dup_reason_phone");
+    if (r === "email") return t("dup_reason_email");
+    if (r === "name") return t("dup_reason_name");
+    return r;
+  }).join(" \u00b7 ");
+}
+
+async function renderDuplicatesList() {
+  const all = await DB.getAll();
+  duplicateGroups = Duplicates.findGroups(all);
+  const wrap = document.getElementById("duplicates-list");
+  if (duplicateGroups.length === 0) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:24px 16px"><p>${t("empty_no_duplicates")}</p></div>`;
+    return;
+  }
+  wrap.innerHTML = duplicateGroups.map((group, idx) => `
+    <div class="more-card" style="margin-bottom:10px">
+      <div class="more-row" style="cursor:pointer" data-review-idx="${idx}">
+        <div class="txt">
+          <p class="t">${group.map((c) => escapeHTML(fullName(c))).join(", ")}</p>
+          <p class="s">${escapeHTML(duplicateReasonLabel(Duplicates.matchReasons(group)))} \u00b7 ${I18N.plural(group.length, "contact_count", "contact_count_plural")}</p>
+        </div>
+      </div>
+    </div>
+  `).join("");
+  wrap.querySelectorAll("[data-review-idx]").forEach((row) => {
+    row.addEventListener("click", () => openDuplicateMerge(Number(row.dataset.reviewIdx)));
+  });
+}
+
+async function openDuplicates() {
+  await renderDuplicatesList();
+  showScreen("screen-duplicates");
+}
+
+function openDuplicateMerge(groupIdx) {
+  activeDuplicateGroup = duplicateGroups[groupIdx];
+  duplicateMergePrimaryId = activeDuplicateGroup[0].id; // default: first found
+  renderDuplicateMergeScreen();
+  showScreen("screen-duplicate-merge");
+}
+
+function renderDuplicateMergeScreen() {
+  const wrap = document.getElementById("duplicate-merge-list");
+  wrap.innerHTML = activeDuplicateGroup.map((c) => `
+    <div class="contact-row" data-id="${c.id}">
+      <span class="select-check ${c.id === duplicateMergePrimaryId ? "checked" : ""}"></span>
+      ${c.photoDataUrl
+        ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover" />`
+        : `<div class="avatar" style="background:${CAT_META[c.category].color}">${initials(c)}</div>`}
+      <div class="contact-info">
+        <p class="contact-name">${escapeHTML(fullName(c))}</p>
+        <p class="contact-sub">${escapeHTML(c.company || primaryPhone(c) || primaryEmail(c) || "")}</p>
+      </div>
+      <span class="badge ${c.category}">${catLabel(c.category)}</span>
+    </div>
+  `).join("");
+  wrap.querySelectorAll(".contact-row").forEach((row) => {
+    row.addEventListener("click", () => {
+      duplicateMergePrimaryId = row.dataset.id;
+      renderDuplicateMergeScreen();
+    });
+  });
+  document.getElementById("duplicate-merge-summary").textContent = t("hint_duplicate_merge_summary", {
+    count: I18N.plural(activeDuplicateGroup.length - 1, "contact_count", "contact_count_plural"),
+  });
+}
+
+async function confirmDuplicateMerge() {
+  if (!activeDuplicateGroup || !duplicateMergePrimaryId) return;
+  const memberIds = activeDuplicateGroup.map((c) => c.id);
+  await Duplicates.merge(duplicateMergePrimaryId, memberIds);
+  showToast(t("toast_contacts_merged"));
+  closeScreen("screen-duplicate-merge");
+  await renderDuplicatesList();
   await Contacts.refresh();
 }
 

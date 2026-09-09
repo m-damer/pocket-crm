@@ -21,7 +21,7 @@ function switchTab(tab) {
   const fab = document.getElementById("fab-add");
   fab.style.display = FAB_ACTIONS[tab] ? "flex" : "none";
   fab.onclick = FAB_ACTIONS[tab] || null;
-  if (tab === "activity") renderGlobalActivityFeed();
+  if (tab === "activity") { renderGlobalActivityFeed(); renderFollowUpSection(); }
 }
 
 document.querySelectorAll(".nav-item").forEach((btn) => {
@@ -365,6 +365,12 @@ document.getElementById("btn-tags-back").addEventListener("click", () => {
   closeAllScreens();
 });
 
+// ---------------- Wiring: Duplicate detection & merge ----------------
+document.getElementById("row-duplicates").addEventListener("click", openDuplicates);
+document.getElementById("btn-duplicates-back").addEventListener("click", closeAllScreens);
+document.getElementById("btn-duplicate-merge-back").addEventListener("click", () => closeScreen("screen-duplicate-merge"));
+document.getElementById("btn-duplicate-merge-confirm").addEventListener("click", confirmDuplicateMerge);
+
 // ---------------- Wiring: Note / call note editor ----------------
 document.getElementById("btn-note-cancel").addEventListener("click", () => {
   releaseRecordingResources();
@@ -372,6 +378,16 @@ document.getElementById("btn-note-cancel").addEventListener("click", () => {
 });
 document.getElementById("btn-note-save").addEventListener("click", saveNoteForm);
 document.getElementById("btn-note-delete").addEventListener("click", deleteNoteForm);
+
+// ---------------- Wiring: Note detail (read-only) ----------------
+// Deliberately NOT closeAllScreens() like every other back button in this
+// app — note detail is nested one level deeper than anything else here
+// (contact detail -> note detail -> note editor), so "back" here should
+// reveal the Notes tab underneath, not jump all the way out past the
+// contact the person was just looking at.
+document.getElementById("btn-note-detail-back").addEventListener("click", () => closeScreen("screen-note-detail"));
+document.getElementById("btn-note-detail-edit").addEventListener("click", () => openNoteForm(noteDetailContactId, noteDetailId));
+document.getElementById("btn-note-detail-delete").addEventListener("click", deleteNoteFromDetail);
 document.querySelectorAll("#note-type-toggle button").forEach((b) => {
   b.addEventListener("click", () => setNoteKind(b.dataset.noteKind));
 });
@@ -535,14 +551,59 @@ I18N.onChange(async () => {
   updateSelectBar();
 });
 
+// ---------------- Wiring: Schedule settings (calendar week start) ----------------
+document.querySelectorAll("#week-start-toggle button").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const val = Number(btn.dataset.weekstart);
+    document.querySelectorAll("#week-start-toggle button").forEach((b) =>
+      b.classList.toggle("active", b === btn)
+    );
+    await Settings.update({ weekStart: val });
+    await Schedule.refresh();
+  });
+});
+
+// ---------------- Wiring: Follow-up nudge settings ----------------
+function setFollowUpDaysRowEnabled(enabled) {
+  const row = document.getElementById("followup-days-row");
+  row.style.opacity = enabled ? "1" : "0.45";
+  row.style.pointerEvents = enabled ? "auto" : "none";
+}
+document.getElementById("followup-enabled-toggle").addEventListener("change", async (e) => {
+  const enabled = e.target.checked;
+  setFollowUpDaysRowEnabled(enabled);
+  await Settings.update({ followUpEnabled: enabled });
+  await renderFollowUpSection();
+});
+document.querySelectorAll("#followup-days-toggle button").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const val = Number(btn.dataset.days);
+    document.querySelectorAll("#followup-days-toggle button").forEach((b) =>
+      b.classList.toggle("active", b === btn)
+    );
+    await Settings.update({ followUpDays: val });
+    await renderFollowUpSection();
+  });
+});
+
 // ---------------- Boot ----------------
 (async function boot() {
   await I18N.init();
   document.querySelectorAll("#lang-toggle button").forEach((b) =>
     b.classList.toggle("active", b.dataset.lang === I18N.lang)
   );
+  const settings = await Settings.get();
+  document.querySelectorAll("#week-start-toggle button").forEach((b) =>
+    b.classList.toggle("active", Number(b.dataset.weekstart) === settings.weekStart)
+  );
+  document.getElementById("followup-enabled-toggle").checked = settings.followUpEnabled;
+  setFollowUpDaysRowEnabled(settings.followUpEnabled);
+  document.querySelectorAll("#followup-days-toggle button").forEach((b) =>
+    b.classList.toggle("active", Number(b.dataset.days) === settings.followUpDays)
+  );
   await Contacts.refresh();
   await Schedule.refresh();
+  await renderFollowUpSection();
   Schedule.startReminderLoop();
 })();
 

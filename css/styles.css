@@ -34,6 +34,17 @@
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
+/* The outer page must never scroll — every screen ("view-*" sections and
+   the ".screen" slide-in overlays) does its own internal scrolling via
+   `.view { overflow-y: auto }`. Without this, anything that scrolls the
+   document itself (e.g. a browser bringing a far-down element into view
+   before a click) shifts `.app` within the viewport, and every `.screen`
+   overlay — positioned absolute relative to `.app` — visibly shifts with
+   it, since a `position:absolute` element's containing block moves with
+   the page even though its own offset within that block doesn't change.
+   Found via a screenshot regression test: opening a screen from a row far
+   down a long More-tab section rendered the whole overlay off-screen. */
+html, body { overflow: hidden; }
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -48,7 +59,14 @@ input, select, textarea { font-family: inherit; }
 .app {
   max-width: 480px;
   margin: 0 auto;
-  min-height: 100dvh;
+  /* Was `min-height: 100dvh` — a floor, not a ceiling. Flexbox can only cap
+     a `flex:1` child's height (forcing its own `overflow-y:auto` to take
+     over) when the flex CONTAINER has a definite height; with only a
+     min-height, .app had no upper bound and just grew to fit whatever a
+     tab's content needed, taking body/the whole page down with it instead
+     of scrolling internally. Harmless while every tab fit in one screen —
+     surfaced once More's content grew past that. */
+  height: 100dvh;
   background: var(--bg);
   position: relative;
   display: flex;
@@ -547,6 +565,7 @@ input, select, textarea { font-family: inherit; }
 .segmented button.sel-voice.active { background: var(--lead-soft); color: var(--lead); }
 .segmented button.sel-lang-en.active,
 .segmented button.sel-lang-ar.active { background: var(--blue-soft); color: var(--on-primary-soft); }
+.segmented button.sel-weekday.active { background: var(--blue-soft); color: var(--on-primary-soft); }
 
 .form-row-2 { display: flex; gap: 10px; }
 .form-row-2 .form-group { flex: 1; }

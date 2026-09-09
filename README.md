@@ -2,11 +2,18 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Bulk edit (this update)
-- The **Select** mode in Contacts (previously only used for sharing contacts as a vCard) now has a second action: a new pencil icon opens **Bulk actions**, with two options —
-- **Add tag**: pick one or more tags to add to every selected contact at once (same picker as the contact form, including creating a brand-new tag inline). Tags a contact already has are left alone — this only adds, never removes.
-- **Change category**: apply one category (Customer / Lead / Lost) to every selected contact at once. Each contact whose category actually changes gets the same "Category changed" activity-log entry it would get from editing it individually — contacts already in that category are left untouched, no duplicate log entries.
-- Fixed a real (if minor) bug found while building this: several header icons (like the vCard-share button) used the `hidden` attribute to hide themselves outside Select mode, but a CSS rule for `.icon-btn` was silently overriding it, so they were never actually hidden. Fixed at the root, the same way the `.view[hidden]` rule already does it elsewhere in the stylesheet.
+## Calendar week-start, notes detail view, duplicate merge, bulk edit, follow-up nudges (this update)
+Five features in one pass:
+- **Calendar starts on** (More → Schedule): pick Saturday, Sunday, or Monday as the first day of the week for the Schedule tab's calendar month view. Defaults to Saturday.
+- **Notes read-only detail view**: tapping a note now opens a read-only screen first — title, type, date, full text (or an inline player for voice call notes) — with Edit and Delete icons in the header, mirroring the pattern the Schedule event detail screen already used. Edit opens the same editor as before; Delete asks to confirm first.
+- **Duplicate contacts** (More → Your data → Find duplicate contacts): scans for contacts that share a phone number, email, or full name — including transitively (A matches B by phone, B matches C by email → all three group together) — and lets you pick which one to keep. Phones, emails, addresses, websites, custom fields, tags, notes, and activity history all combine into the kept contact; the others are removed. The merge itself is logged to the kept contact's activity timeline.
+- **Bulk edit** for the Contacts multi-select (previously vCard-sharing only): a new pencil icon opens **Bulk actions** — **Add tag** (adds one or more tags to every selected contact without removing tags they already have; can create a new tag inline) or **Change category** (applies one category to the whole selection; each contact that actually changes gets the same activity-log entry as an individual edit would, no duplicates for contacts already in that category).
+- **Follow-up nudges** (More → Follow-ups): toggle on/off, with a 7/14/30/60-day inactivity threshold. When on, the Activity tab shows a "Needs follow-up" section above the regular feed, listing customer/lead contacts nothing has been logged against (no note, call, or edit) for longer than the threshold — lost contacts are excluded. Tap a contact there to jump straight to it.
+
+Three real bugs turned up along the way and got fixed at the root rather than worked around:
+- Several header icons (like the vCard-share button, and the new bulk-edit button) used the `hidden` attribute to stay hidden outside their relevant mode, but `.icon-btn`'s own `display:flex` was silently overriding the browser's built-in `[hidden]` styling, so they were never actually hidden — just not noticeable with only one affected button before now.
+- The Schedule calendar month view only rendered once the events list below it had at least one item — a fresh install, or any empty filter, left the whole calendar blank instead of showing an empty grid.
+- The app shell (`.app`) only had a `min-height`, not a fixed `height` — harmless while every tab's content fit in one screen, but once a tab's content grew taller (as More's did this update), the whole page grew and scrolled with it instead of that tab's own internal scrollbar taking over, which also meant slide-in screens opened by scrolled-down rows could render off-screen. Fixed by giving `.app` a definite `height: 100dvh` so flexbox can actually cap each tab's height and hand overflow to its own scrollbar, the way it was designed to.
 
 ## Contact screen overhaul + Schedule detail + Calendar
 - **Hero card restructured**: name and category badge share one line; nickname sits right under the name; job title/company below that; tags below that

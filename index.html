@@ -97,6 +97,7 @@
     <header class="header">
       <h1 data-i18n="nav_activity">Activity</h1>
     </header>
+    <div id="followup-nudges-section"></div>
     <div class="field-list" id="global-activity-list" style="padding-top:8px"></div>
   </section>
 
@@ -109,6 +110,31 @@
         <div class="segmented" id="lang-toggle" style="width:100%">
           <button type="button" class="sel-lang-en active" data-lang="en" data-i18n="lang_english">English</button>
           <button type="button" class="sel-lang-ar" data-lang="ar" data-i18n="lang_arabic">العربية</button>
+        </div>
+      </div>
+      <p class="section-title" data-i18n="section_schedule">Schedule</p>
+      <div class="more-card" style="padding:10px 12px">
+        <p style="font-size:12.5px;color:var(--text-muted);margin:2px 2px 8px" data-i18n="label_week_start">Calendar starts on</p>
+        <div class="segmented" id="week-start-toggle" style="width:100%">
+          <button type="button" class="sel-weekday" data-weekstart="6" data-i18n="weekday_sat">Saturday</button>
+          <button type="button" class="sel-weekday" data-weekstart="0" data-i18n="weekday_sun">Sunday</button>
+          <button type="button" class="sel-weekday" data-weekstart="1" data-i18n="weekday_mon">Monday</button>
+        </div>
+      </div>
+      <p class="section-title" data-i18n="section_followup">Follow-ups</p>
+      <div class="more-card" style="padding:10px 12px">
+        <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 2px;cursor:pointer">
+          <span style="font-size:14.5px;font-weight:600" data-i18n="label_followup_enabled">Nudge me about inactive contacts</span>
+          <input type="checkbox" id="followup-enabled-toggle" class="fs-toggle-input" />
+        </label>
+        <div id="followup-days-row">
+          <p style="font-size:12.5px;color:var(--text-muted);margin:10px 2px 8px" data-i18n="label_followup_days">Flag contacts after</p>
+          <div class="segmented" id="followup-days-toggle" style="width:100%">
+            <button type="button" class="sel-weekday" data-days="7" data-i18n="followup_7d">7 days</button>
+            <button type="button" class="sel-weekday" data-days="14" data-i18n="followup_14d">14 days</button>
+            <button type="button" class="sel-weekday" data-days="30" data-i18n="followup_30d">30 days</button>
+            <button type="button" class="sel-weekday" data-days="60" data-i18n="followup_60d">60 days</button>
+          </div>
         </div>
       </div>
       <p class="section-title" data-i18n="section_contact_form">Contact form</p>
@@ -138,6 +164,10 @@
       </div>
       <p class="section-title" data-i18n="section_your_data">Your data</p>
       <div class="more-card">
+        <div class="more-row" id="row-duplicates">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="13" height="13" rx="2"/><path d="M21 8v11a2 2 0 01-2 2H8"/></svg>
+          <div class="txt"><p class="t" data-i18n="row_duplicates_t">Find duplicate contacts</p><p class="s" data-i18n="row_duplicates_s">Scan for likely duplicates by phone, email, or name</p></div>
+        </div>
         <div class="more-row" id="row-export">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
           <div class="txt"><p class="t" data-i18n="row_export_t">Export full backup (JSON)</p><p class="s" data-i18n="row_export_s">Everything — contacts, schedule, documents</p></div>
@@ -342,6 +372,36 @@
     </div>
   </div>
 
+  <!-- ===== DUPLICATE CONTACTS: group list ===== -->
+  <div class="screen" id="screen-duplicates">
+    <header class="header">
+      <button class="icon-btn icon-back" id="btn-duplicates-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 data-i18n="duplicates_title">Duplicate contacts</h1>
+      <div style="width:36px"></div>
+    </header>
+    <div class="view">
+      <p class="hint-text" style="margin:14px 16px" data-i18n="hint_duplicates">Contacts that share a phone number, email, or full name.</p>
+      <div id="duplicates-list" style="padding:4px 12px"></div>
+    </div>
+  </div>
+
+  <!-- ===== DUPLICATE CONTACTS: review & merge one group ===== -->
+  <div class="screen" id="screen-duplicate-merge">
+    <header class="header">
+      <button class="icon-btn icon-back" id="btn-duplicate-merge-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 data-i18n="duplicate_merge_title">Review & merge</h1>
+      <div style="width:36px"></div>
+    </header>
+    <div class="view">
+      <p class="hint-text" style="margin:14px 16px" data-i18n="hint_duplicate_merge_pick">Choose which contact to keep. Its name, category and photo win on conflicts — everything else (phones, emails, tags, notes, activity) is combined from all of them.</p>
+      <div id="duplicate-merge-list" style="padding:4px 12px"></div>
+      <p class="hint-text" id="duplicate-merge-summary" style="margin:14px 16px"></p>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-duplicate-merge-confirm" style="width:100%" data-i18n="btn_merge_contacts">Merge contacts</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== BULK EDIT: add tag to selected contacts ===== -->
   <div class="screen" id="screen-bulk-tag">
     <header class="header">
@@ -388,6 +448,24 @@
   </div>
 
   <!-- ===== NOTE / CALL NOTE EDITOR SCREEN ===== -->
+  <!-- ===== NOTE DETAIL SCREEN (read-only) ===== -->
+  <!-- Declared before screen-note-form: both share the same z-index, and
+       stacking follows DOM order (later paints on top) — this one is
+       opened first (tapping a note card) with the editor opened on top of
+       it (tapping Edit), so the editor must come later in the DOM or its
+       own buttons end up visually underneath this screen and unclickable. -->
+  <div class="screen" id="screen-note-detail">
+    <header class="header">
+      <button class="icon-btn icon-back" id="btn-note-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h1 data-i18n="note_detail_title">Note</h1>
+      <button class="icon-btn" id="btn-note-detail-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
+      <button class="icon-btn" id="btn-note-detail-delete" style="color:#F3C9C9" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>
+    </header>
+    <div class="view">
+      <div id="note-detail-content" style="padding:14px 16px"></div>
+    </div>
+  </div>
+
   <div class="screen" id="screen-note-form">
     <header class="header">
       <button class="icon-btn" id="btn-note-cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
