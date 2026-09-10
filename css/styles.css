@@ -293,6 +293,14 @@ body {
 button { font-family: inherit; }
 input, select, textarea { font-family: inherit; }
 
+/* Rubik replaces the Latin font stack whenever the UI is in Arabic — the
+   English side stays on Roboto (already on the device, no download), this
+   only applies once html[lang] is actually "ar" (set in i18n.js when the
+   user switches languages, or by the instant-paint head script on boot). */
+html[lang="ar"] body {
+  font-family: "Rubik", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
+}
+
 .app {
   max-width: 480px;
   margin: 0 auto;
@@ -1154,7 +1162,25 @@ input, select, textarea { font-family: inherit; }
 }
 .photo-preview svg { width: 40px; height: 40px; }
 .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
-.photo-picker-actions { display: flex; gap: 10px; }
+.photo-picker-actions { display: flex; gap: 10px; justify-content: center; }
+.btn-photo-action {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+  background: transparent;
+  cursor: pointer;
+}
+.btn-photo-action:active { background: var(--blue-soft); }
+.btn-photo-action.danger {
+  border-color: var(--md-sys-color-error);
+  color: var(--md-sys-color-error);
+}
+.btn-photo-action.danger:active { background: var(--md-sys-color-error-container); }
 
 /* ---------- Photo crop tool ---------- */
 .crop-viewport {
