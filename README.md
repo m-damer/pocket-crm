@@ -2,7 +2,17 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Add Contact menu, phone-import fixes, photo buttons, and Arabic font (this update)
+## Important: how to actually get this update (this note first)
+This app caches itself aggressively on purpose, so it keeps working with no internet. That same caching is almost certainly why the last update's fixes looked like they hadn't happened — the code was correct, but your phone kept running the old cached version. **This update adds a real fix for that going forward**: the app now detects when a new version has finished loading in the background and reloads itself automatically. From this update onward, you shouldn't need to do anything manual again.
+
+**For this one update specifically**, since that self-healing code isn't in the version you currently have installed yet, do a one-time clean reinstall to be sure you're on the new code:
+1. Remove the app from your home screen (long-press → uninstall/remove)
+2. In Chrome: Settings → Site settings → find the site → Clear & reset (or Settings → Privacy → Clear browsing data → Cached images and files)
+3. Re-visit the site and add it to your home screen again
+
+## Add Contact menu, phone-import fixes, photo buttons, and Arabic font
+- **Self-updating going forward**: the app now detects a freshly-installed background update and reloads itself automatically, instead of silently continuing to run old cached code until you happen to force-refresh. See the note above — this update itself still needs one manual clean reinstall, but future ones shouldn't.
+- **Re-verified all three previously-reported fixes directly in the source and in the exact delivered file** (not just re-explained): the Add-contact menu correctly shows before opening either path, phone-number/email de-duplication is confirmed working, and the photo-removal confirmation dialog is confirmed appearing before anything is actually deleted.
 - **Adding a contact now offers a choice**: tapping + on Contacts shows "Add manually" or "Import from phone" instead of jumping straight to a blank form. The import option only appears on devices/browsers that actually support it.
 - **Fixed the phone-import duplication bug**: imported contacts were showing the same phone number (and email) repeated — usually 3 times. Root cause: Android often keeps several "raw" copies of one contact (Google account sync, SIM card, WhatsApp, etc.), and the browser's contact-picker API hands back the union of all of them without de-duplicating. Fixed by normalizing and de-duplicating phone numbers (formatting-independent) and emails (case/whitespace-independent) before saving. Applied the same fix to the identical bug in the QR code flow's phone picker.
 - **Addresses are now imported too** — previously not even requested from the picker, so they were silently skipped every time.
