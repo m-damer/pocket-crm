@@ -493,6 +493,28 @@ function closeNoteSheet() {
 }
 
 // ---------------- "Add Activity" quick-action menu ----------------
+function openAddContactMenu() {
+  const icons = {
+    manual: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>',
+    phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/><path d="M9 7l3 3 3-3"/><path d="M12 4v6"/></svg>',
+  };
+  const rows = [activityMenuRowHTML(icons.manual, t("menu_add_contact_manual"), "manual")];
+  if (contactPickerSupported()) rows.push(activityMenuRowHTML(icons.phone, t("menu_add_contact_phone"), "phone"));
+  openSheet({
+    title: t("menu_add_contact_title"),
+    date: "",
+    bodyHTML: `<div class="activity-menu-list">${rows.join("")}</div>`,
+  });
+  document.querySelectorAll(".activity-menu-row").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeNoteSheet();
+      const action = btn.dataset.action;
+      if (action === "manual") openForm(null);
+      else if (action === "phone") importFromPhoneContacts();
+    });
+  });
+}
+
 function activityMenuRowHTML(icon, label, action) {
   return `
     <button type="button" class="activity-menu-row" data-action="${action}">

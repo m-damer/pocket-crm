@@ -194,19 +194,23 @@ async function pickQRFromPhoneContacts() {
     return;
   }
   try {
-    const picked = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
+    const picked = await navigator.contacts.select(["name", "tel", "email", "address"], { multiple: true });
     if (!picked || picked.length === 0) return;
     qrPendingContacts = picked.map((p) => {
-      const full = (p.name && p.name[0]) || "";
+      const full = ((p.name && p.name[0]) || "").trim();
       const sp = full.indexOf(" ");
+      const addresses = dedupeBy(
+        (p.address || []).map((a) => formatPickerAddress(a)).filter(Boolean),
+        (v) => v.trim().toLowerCase()
+      ).map((value) => ({ label: "other", value, mapsLink: "" }));
       return {
         namePrefix: "",
         firstName: sp === -1 ? full : full.slice(0, sp),
         lastName: sp === -1 ? "" : full.slice(sp + 1),
         company: "", jobTitle: "", department: "",
-        phones: (p.tel || []).map((v) => ({ label: "mobile", value: v })),
-        emails: (p.email || []).map((v) => ({ label: "other", value: v })),
-        addresses: [], websites: [], customFields: [], birthday: "", notesList: [],
+        phones: dedupePhoneValues(p.tel || []).map((v) => ({ label: "mobile", value: v })),
+        emails: dedupeEmailValues(p.email || []).map((v) => ({ label: "other", value: v })),
+        addresses, websites: [], customFields: [], birthday: "", notesList: [],
       };
     });
     openFieldPicker(handleQRFieldsConfirmed, null, true);

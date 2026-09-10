@@ -472,6 +472,10 @@ const I18N_DICT = {
     // Hero restructure, Add Activity menu, Details section, Schedule detail/calendar (this update)
     label_details: "Details",
     btn_add_activity: "Add Activity",
+    menu_add_contact_title: "Add contact",
+    menu_add_contact_manual: "Add manually",
+    menu_add_contact_phone: "Import from phone",
+    confirm_remove_photo: "This will remove the photo. Continue?",
     menu_add_task: "Add task",
     menu_add_meeting: "Add meeting",
     menu_add_note: "Add note",
@@ -945,6 +949,10 @@ const I18N_DICT = {
 
     label_details: "\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644",
     btn_add_activity: "\u0625\u0636\u0627\u0641\u0629 \u0646\u0634\u0627\u0637",
+    menu_add_contact_title: "\u0625\u0636\u0627\u0641\u0629 \u062c\u0647\u0629 \u0627\u062a\u0635\u0627\u0644",
+    menu_add_contact_manual: "\u0625\u0636\u0627\u0641\u0629 \u064a\u062f\u0648\u064a\u0627\u064b",
+    menu_add_contact_phone: "\u0627\u0633\u062a\u064a\u0631\u0627\u062f \u0645\u0646 \u0627\u0644\u0647\u0627\u062a\u0641",
+    confirm_remove_photo: "\u0633\u064a\u062a\u0645 \u0625\u0632\u0627\u0644\u0629 \u0627\u0644\u0635\u0648\u0631\u0629. \u0647\u0644 \u062a\u0631\u064a\u062f \u0627\u0644\u0645\u062a\u0627\u0628\u0639\u0629\u061f",
     menu_add_task: "\u0625\u0636\u0627\u0641\u0629 \u0645\u0647\u0645\u0629",
     menu_add_meeting: "\u0625\u0636\u0627\u0641\u0629 \u0627\u062c\u062a\u0645\u0627\u0639",
     menu_add_note: "\u0625\u0636\u0627\u0641\u0629 \u0645\u0644\u0627\u062d\u0638\u0629",

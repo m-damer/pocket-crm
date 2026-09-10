@@ -251,25 +251,71 @@ function contactPickerSupported() {
   return "contacts" in navigator && "ContactsManager" in window;
 }
 
+function dedupeBy(list, keyFn) {
+  const seen = new Set();
+  const out = [];
+  for (const item of list) {
+    const key = keyFn(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+// The phone's native contact picker commonly returns the SAME number or
+// email more than once for a single contact — Android in particular often
+// keeps several "raw" copies of one logical contact (synced from a Google
+// account, the SIM card, WhatsApp, etc.) and the picker API hands back the
+// union of all of them without de-duplicating. That's a platform quirk,
+// not something this app's own code causes, but it's still this app's job
+// to clean it up before saving.
+function dedupePhoneValues(values) {
+  return dedupeBy(values, (v) => String(v || "").replace(/[^\d+]/g, ""));
+}
+function dedupeEmailValues(values) {
+  return dedupeBy(values, (v) => String(v || "").trim().toLowerCase());
+}
+
+// The Contact Picker API's address objects are structured (addressLine,
+// city, region, country, ...), not a single string — this composes them
+// into one readable line matching how this app stores addresses.
+function formatPickerAddress(addr) {
+  if (!addr) return "";
+  const lines = Array.isArray(addr.addressLine) ? addr.addressLine : [];
+  const parts = [...lines, addr.city, addr.region, addr.postalCode, addr.country].filter(Boolean);
+  return parts.join(", ");
+}
+
 async function importFromPhoneContacts() {
   if (!contactPickerSupported()) {
     showToast(t("toast_no_contact_picker"));
     return;
   }
   try {
-    const picked = await navigator.contacts.select(["name", "tel", "email"], { multiple: true });
+    // "address" is requested too now — the API supports it, it just wasn't
+    // being asked for before. Support for it varies by device/browser, so
+    // p.address may still come back empty or undefined on some phones;
+    // that's a platform limitation, handled gracefully below rather than
+    // treated as an error.
+    const picked = await navigator.contacts.select(["name", "tel", "email", "address"], { multiple: true });
     if (!picked || picked.length === 0) return;
     let count = 0;
     for (const p of picked) {
-      const full = (p.name && p.name[0]) || "";
+      const full = ((p.name && p.name[0]) || "").trim();
       const sp = full.indexOf(" ");
       const firstName = sp === -1 ? full : full.slice(0, sp);
       const lastName = sp === -1 ? "" : full.slice(sp + 1);
+      const addresses = dedupeBy(
+        (p.address || []).map((a) => formatPickerAddress(a)).filter(Boolean),
+        (v) => v.trim().toLowerCase()
+      ).map((value) => ({ label: "other", value, mapsLink: "" }));
       await DB.add({
         firstName,
         lastName,
-        phones: (p.tel || []).map((v) => ({ label: "mobile", value: v })),
-        emails: (p.email || []).map((v) => ({ label: "other", value: v })),
+        phones: dedupePhoneValues(p.tel || []).map((v) => ({ label: "mobile", value: v })),
+        emails: dedupeEmailValues(p.email || []).map((v) => ({ label: "other", value: v })),
+        addresses,
         category: "lead",
       });
       count++;

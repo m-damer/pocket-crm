@@ -49,7 +49,7 @@ const TAB_VIEWS = {
 };
 
 const FAB_ACTIONS = {
-  contacts: () => openForm(null),
+  contacts: () => openAddContactMenu(),
   schedule: () => openEventForm(null),
   pipeline: () => openDealForm(null),
 };
@@ -238,6 +238,8 @@ document.getElementById("photo-input").addEventListener("change", (e) => {
   e.target.value = "";
 });
 document.getElementById("btn-remove-photo").addEventListener("click", () => {
+  if (!formPhotoDataUrl) return; // nothing to remove — skip the confirmation noise
+  if (!confirm(t("confirm_remove_photo"))) return;
   formPhotoDataUrl = "";
   updatePhotoPreview();
 });
@@ -707,5 +709,21 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("service-worker.js").catch(() => {
       /* offline caching just won't be available; app still works */
     });
+  });
+  // service-worker.js already calls skipWaiting() + clients.claim() on
+  // every update, so a newly-installed version takes control automatically
+  // — the one piece that was missing is telling an already-open tab to
+  // actually reload once that happens, so it picks up the new HTML/JS
+  // instead of continuing to run whatever was already loaded in memory.
+  // This is exactly the class of bug that made three already-shipped
+  // fixes look like they hadn't happened at all: the code was correct and
+  // freshly cached, but the open tab was still executing the old page.
+  // The reloadedOnce guard is the standard safeguard against this event
+  // firing more than once and causing a refresh loop.
+  let reloadedOnce = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadedOnce) return;
+    reloadedOnce = true;
+    window.location.reload();
   });
 }
