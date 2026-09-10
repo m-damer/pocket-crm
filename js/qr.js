@@ -9,7 +9,15 @@ function renderQRToCanvas(text, canvas, opts) {
     qr.make();
     const count = qr.getModuleCount();
     const cell = opts.cellSize || 6;
-    const margin = opts.margin != null ? opts.margin : cell * 2;
+    // ISO/IEC 18004 requires a minimum 4-module quiet zone on all sides —
+    // real phone camera scanners rely on this blank border to detect the
+    // code's boundary before they even attempt to decode it. The default
+    // here used to be 2 modules, which is below spec; a synthetic decoder
+    // in a clean test can often still read an under-margined code, but a
+    // real camera scanning a screen, especially with any nearby on-screen
+    // content, is a lot more likely to fail exactly where this margin was
+    // being shorted.
+    const margin = opts.margin != null ? opts.margin : cell * 4;
     const size = count * cell + margin * 2;
     canvas.width = size;
     canvas.height = size;
@@ -26,12 +34,15 @@ function renderQRToCanvas(text, canvas, opts) {
     if (!opts.logoDataUrl) { resolve(canvas); return; }
     const img = new Image();
     img.onload = () => {
-      // Logo covers ~22% of the code's width — well inside the ~30%
-      // damage the "H" error-correction level can recover from, with a
-      // white padded square behind it so the logo doesn't touch the
-      // surrounding modules.
-      const logoSize = size * 0.22;
-      const pad = logoSize * 0.14;
+      // Logo covers ~18% of the code's width (including its white
+      // padding, ~16% area) — conservative on purpose. The "H" correction
+      // level can in principle recover from far more, but that headroom
+      // also has to cover real-world scan conditions (screen glare, a
+      // camera at an angle, a low-end scanner) on top of the logo itself,
+      // not just the logo in isolation the way a clean synthetic decode
+      // test would see it.
+      const logoSize = size * 0.18;
+      const pad = logoSize * 0.16;
       const cx = (size - logoSize) / 2;
       const cy = (size - logoSize) / 2;
       ctx.fillStyle = "#ffffff";
@@ -205,10 +216,27 @@ async function pickQRFromPhoneContacts() {
 }
 
 // ---------------- QR source: manual entry ----------------
+// ---------------- QR source: manual entry ----------------
+let qrManualPhones = [];
+let qrManualEmails = [];
+let qrManualWebsites = [];
+let qrManualAddresses = [];
+let qrManualCustomFields = [];
+
 function openQRManualForm() {
-  ["qr-manual-prefix", "qr-manual-first", "qr-manual-last", "qr-manual-jobtitle", "qr-manual-department", "qr-manual-company", "qr-manual-phone", "qr-manual-email"].forEach((id) => {
+  ["qr-manual-prefix", "qr-manual-first", "qr-manual-last", "qr-manual-jobtitle", "qr-manual-department", "qr-manual-company"].forEach((id) => {
     document.getElementById(id).value = "";
   });
+  qrManualPhones = [{ label: "mobile", value: "" }];
+  qrManualEmails = [{ label: "other", value: "" }];
+  qrManualWebsites = [];
+  qrManualAddresses = [];
+  qrManualCustomFields = [];
+  renderMultiFieldEditor("qr-manual-phones", qrManualPhones, "phones");
+  renderMultiFieldEditor("qr-manual-emails", qrManualEmails, "emails");
+  renderMultiFieldEditor("qr-manual-websites", qrManualWebsites, "websites");
+  renderMultiFieldEditor("qr-manual-addresses", qrManualAddresses, "addresses");
+  renderCustomFieldsEditor("qr-manual-customfields", qrManualCustomFields);
   showScreen("screen-qr-manual");
 }
 
@@ -219,17 +247,18 @@ function confirmQRManualForm() {
   const jobTitle = document.getElementById("qr-manual-jobtitle").value.trim();
   const department = document.getElementById("qr-manual-department").value.trim();
   const company = document.getElementById("qr-manual-company").value.trim();
-  const phone = document.getElementById("qr-manual-phone").value.trim();
-  const email = document.getElementById("qr-manual-email").value.trim();
   if (!first && !last && !company) {
     showToast(t("toast_add_name_or_company"));
     return;
   }
   qrPendingContacts = [{
     namePrefix: prefix, firstName: first, lastName: last, company, jobTitle, department,
-    phones: phone ? [{ label: "mobile", value: phone }] : [],
-    emails: email ? [{ label: "other", value: email }] : [],
-    addresses: [], websites: [], customFields: [], birthday: "", notesList: [],
+    phones: readMultiFieldEditor("qr-manual-phones", false),
+    emails: readMultiFieldEditor("qr-manual-emails", false),
+    websites: readMultiFieldEditor("qr-manual-websites", false),
+    addresses: readMultiFieldEditor("qr-manual-addresses", true),
+    customFields: readCustomFieldsEditor("qr-manual-customfields"),
+    birthday: "", notesList: [],
   }];
   closeScreen("screen-qr-manual");
   openFieldPicker(handleQRFieldsConfirmed, null, true);
@@ -284,7 +313,7 @@ async function renderQRList() {
   const settings = await Settings.get();
   for (const q of codes) {
     const canvas = document.getElementById(`qr-thumb-${q.id}`);
-    if (canvas) await renderQRToCanvas(q.vcardText, canvas, { cellSize: 2, margin: 4, logoDataUrl: q.includeLogo ? settings.logoDataUrl : "" });
+    if (canvas) await renderQRToCanvas(q.vcardText, canvas, { cellSize: 2, margin: 8, logoDataUrl: q.includeLogo ? settings.logoDataUrl : "" });
   }
   wrap.querySelectorAll(".qr-row").forEach((row) => {
     row.addEventListener("click", () => openQRView(row.dataset.id));
@@ -323,7 +352,7 @@ async function openQRView(id) {
   document.getElementById("qr-view-date").textContent = t("qr_generated_prefix", { date: fmtDate(q.createdAt) });
   const settings = await Settings.get();
   const canvas = document.getElementById("qr-view-canvas");
-  await renderQRToCanvas(q.vcardText, canvas, { cellSize: 8, margin: 16, logoDataUrl: q.includeLogo ? settings.logoDataUrl : "" });
+  await renderQRToCanvas(q.vcardText, canvas, { cellSize: 8, margin: 32, logoDataUrl: q.includeLogo ? settings.logoDataUrl : "" });
   const [parsed] = parseVCards(q.vcardText);
   renderQRDetailsList(parsed || {});
   showScreen("screen-qr-view");
