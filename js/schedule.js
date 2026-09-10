@@ -82,7 +82,7 @@ const Schedule = {
     if (items.length === 0) {
       el.innerHTML = `
         <div class="empty-state">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+          <svg viewBox="0 -960 960 960" fill="currentColor"><path d="m388-212-56-56 92-92-92-92 56-56 92 92 92-92 56 56-92 92 92 92-56 56-92-92-92 92ZM200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z"/></svg>
           <h3>${this.filter === "completed" ? t("empty_nothing_completed") : t("empty_nothing_scheduled")}</h3>
           <p>${t("empty_schedule_hint")}</p>
         </div>`;
@@ -107,7 +107,7 @@ const Schedule = {
         return `
         <div class="event-row ${e.completed ? "done" : ""}" data-id="${e.id}">
           <button class="event-check ${e.completed ? "checked" : ""}" data-toggle="${e.id}" title="${e.completed ? t("mark_incomplete_title") : t("mark_complete_title")}">
-            ${e.completed ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : ""}
+            ${e.completed ? '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg>' : ""}
           </button>
           <div class="event-info" data-open="${e.id}">
             <p class="event-title">${escapeHTML(e.title || t("untitled_event"))}</p>
@@ -450,7 +450,7 @@ function renderCalendarDayEvents() {
   wrap.innerHTML = dayEvents.map((e) => `
     <div class="event-row ${e.completed ? "done" : ""}" data-id="${e.id}">
       <button class="event-check ${e.completed ? "checked" : ""}" data-toggle="${e.id}" title="${e.completed ? t("mark_incomplete_title") : t("mark_complete_title")}">
-        ${e.completed ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : ""}
+        ${e.completed ? '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg>' : ""}
       </button>
       <div class="event-info" data-open="${e.id}">
         <p class="event-title">${escapeHTML(e.title || t("untitled_event"))}</p>

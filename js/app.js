@@ -139,8 +139,8 @@ function updateSelectBar() {
   const selectBtn = document.getElementById("btn-select-mode");
   selectBtn.title = Contacts.selectMode ? t("btn_cancel_select_title") : t("btn_select_title");
   selectBtn.innerHTML = Contacts.selectMode
-    ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>`
-    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/></svg>`;
+    ? `<svg viewBox="0 -960 960 960" fill="currentColor"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>`
+    : `<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm-56-216 296-296-56-56-240 240-120-120-56 56 176 176Z"/></svg>`;
   const fab = document.getElementById("fab-add");
   if (Contacts.selectMode) fab.style.display = "none";
   else if (FAB_ACTIONS[document.querySelector(".nav-item.active")?.dataset.tab]) fab.style.display = "flex";
@@ -198,12 +198,12 @@ function openBulkActionsMenu() {
     date: "",
     bodyHTML: `<div class="activity-menu-list">${[
       activityMenuRowHTML(
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L11 22.99a2 2 0 01-2.83 0L1 15.83a2 2 0 010-2.83L10.59 3.41A2 2 0 0112 3H21a1 1 0 011 1v9a2 2 0 01-.59 1.41z"/><circle cx="16.5" cy="8.5" r="1.5"/></svg>',
+        '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M856-390 570-104q-12 12-27 18t-30 6q-15 0-30-6t-27-18L103-457q-11-11-17-25.5T80-513v-287q0-33 23.5-56.5T160-880h287q16 0 31 6.5t26 17.5l352 353q12 12 17.5 27t5.5 30q0 15-5.5 29.5T856-390ZM513-160l286-286-353-354H160v286l353 354ZM260-640q25 0 42.5-17.5T320-700q0-25-17.5-42.5T260-760q-25 0-42.5 17.5T200-700q0 25 17.5 42.5T260-640Zm220 160Z"/></svg>',
         t("menu_bulk_add_tag"),
         "tag"
       ),
       activityMenuRowHTML(
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/><path d="M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>',
+        '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M160-160v-80h110l-16-14q-52-46-73-105t-21-119q0-111 66.5-197.5T400-790v84q-72 26-116 88.5T240-478q0 45 17 87.5t53 78.5l10 10v-98h80v240H160Zm400-10v-84q72-26 116-88.5T720-482q0-45-17-87.5T650-648l-10-10v98h-80v-240h240v80H690l16 14q49 49 71.5 106.5T800-482q0 111-66.5 197.5T560-170Z"/></svg>',
         t("menu_bulk_change_category"),
         "category"
       ),
@@ -338,10 +338,10 @@ async function renderTagsManageScreen() {
             <p class="s">${I18N.plural(counts[t2.id] || 0, "contact_count", "contact_count_plural")}</p>
           </div>
           <button type="button" class="icon-btn tag-edit-btn" style="color:var(--navy)" title="${t("tag_edit_title")}" data-id="${t2.id}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+            <svg viewBox="0 -960 960 960" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>
           </button>
           <button type="button" class="icon-btn tag-delete-btn" style="color:#B3261E" title="${t("tag_delete_title")}" data-id="${t2.id}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            <svg viewBox="0 -960 960 960" fill="currentColor"><path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z"/></svg>
           </button>
         </div>
       `).join("");
