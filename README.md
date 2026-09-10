@@ -2,7 +2,16 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Important: how to actually get this update (this note first)
+## Every icon replaced with authentic Google Material Symbols (this update)
+Every single icon in the app — over 90 instances covering roughly 45 distinct icons — was replaced with the real, official Material Symbols path data, fetched directly from Google's own open-source icon repository (not redrawn from memory or approximated). The previous icon set used simple stroke-based line drawings that generally resembled Material icons; these are now the actual shapes Google ships in its own products.
+
+- **Fetched from source, not guessed**: every icon's path data comes straight from `google/material-design-icons` on GitHub — the same files Google's own apps use.
+- **Stays fully offline-safe**: rather than loading an icon font from the internet (which would show blank buttons if it failed to load), every icon is embedded directly in the app's own files as inline SVG, exactly like before. Nothing about the app's offline-first design changed.
+- **A few small semantic corrections along the way**: a couple of places (deleting a tag, deleting an uploaded document) were reusing the plain "X / close" icon for what's actually a permanent delete action. Real Material Design convention reserves the trash-can icon for that and the X for dismissing a dialog — fixed to match.
+- **Covers everything**: the bottom navigation, every screen header (back/edit/delete/save/close/confirm), the Contacts toolbar, calendar navigation, every row in More → Settings, the FAB and Add-Activity menus, Call/WhatsApp/Email quick actions, the Add Contact menu, empty states across every screen, and every small icon button on multi-value field editors (phone/email/address/website/custom-field rows).
+- Verified with 13 automated regression tests plus a full visual pass across every major screen, in addition to a plain syntax and structural check confirming no `<svg>` tag was left unbalanced anywhere in the process.
+
+## Important: how to actually get this update
 This app caches itself aggressively on purpose, so it keeps working with no internet. That same caching is almost certainly why the last update's fixes looked like they hadn't happened — the code was correct, but your phone kept running the old cached version. **This update adds a real fix for that going forward**: the app now detects when a new version has finished loading in the background and reloads itself automatically. From this update onward, you shouldn't need to do anything manual again.
 
 **For this one update specifically**, since that self-healing code isn't in the version you currently have installed yet, do a one-time clean reinstall to be sure you're on the new code:
