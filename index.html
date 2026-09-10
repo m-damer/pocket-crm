@@ -337,6 +337,7 @@
           <button type="button" class="sel-lost" data-cat="lost" data-i18n="cat_lost">Lost</button>
         </div>
       </div>
+      <div class="form-group"><label data-i18n="label_name_prefix">Prefix (optional)</label><input type="text" id="f-prefix" placeholder="e.g. Dr., Eng." data-i18n-ph="ph_name_prefix" /></div>
       <div class="form-group"><label data-i18n="label_first_name">First name</label><input type="text" id="f-first" /></div>
       <div class="form-group"><label data-i18n="label_last_name">Last name</label><input type="text" id="f-last" /></div>
 
@@ -344,6 +345,7 @@
         <div class="form-group" data-field="nickname"><label data-i18n="field_nickname">Nickname</label><input type="text" id="f-nickname" /></div>
         <div data-field="companyJobTitle">
           <div class="form-group"><label data-i18n="field_job_title">Job title</label><input type="text" id="f-jobtitle" /></div>
+          <div class="form-group"><label data-i18n="field_department">Department</label><input type="text" id="f-department" /></div>
           <div class="form-group"><label data-i18n="field_company">Company</label><input type="text" id="f-company" /></div>
         </div>
         <div class="form-group" data-field="phones"><label data-i18n="field_phones">Phone numbers</label><div id="f-phones"></div></div>
@@ -663,8 +665,11 @@
       <div style="width:36px"></div>
     </header>
     <div class="view">
+      <div class="form-group"><label data-i18n="label_name_prefix">Prefix (optional)</label><input type="text" id="qr-manual-prefix" placeholder="e.g. Dr., Eng." data-i18n-ph="ph_name_prefix" /></div>
       <div class="form-group"><label data-i18n="label_first_name">First name</label><input type="text" id="qr-manual-first" /></div>
       <div class="form-group"><label data-i18n="label_last_name">Last name</label><input type="text" id="qr-manual-last" /></div>
+      <div class="form-group"><label data-i18n="field_job_title">Job title</label><input type="text" id="qr-manual-jobtitle" /></div>
+      <div class="form-group"><label data-i18n="field_department">Department</label><input type="text" id="qr-manual-department" /></div>
       <div class="form-group"><label data-i18n="label_company">Company</label><input type="text" id="qr-manual-company" /></div>
       <div class="form-group"><label data-i18n="label_phone">Phone</label><input type="tel" id="qr-manual-phone" /></div>
       <div class="form-group"><label data-i18n="label_email">Email</label><input type="email" id="qr-manual-email" /></div>
@@ -679,6 +684,7 @@
     <header class="header">
       <button class="icon-btn icon-back" id="btn-qr-view-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       <h1 id="qr-view-label" data-i18n="qr_code_fallback">QR code</h1>
+      <button class="icon-btn" id="btn-qr-view-edit-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
       <button class="icon-btn" id="btn-qr-view-delete" style="color:var(--md-sys-color-error)" title="Delete" data-i18n-title="delete_title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button>
     </header>
     <div class="view">
@@ -690,6 +696,8 @@
         <button class="btn-secondary" id="btn-qr-download" style="flex:1" data-i18n="btn_download">Download</button>
         <button class="btn-primary" id="btn-qr-share" style="flex:1" data-i18n="btn_share">Share</button>
       </div>
+      <p class="section-title" style="margin:18px 16px 6px" data-i18n="qr_details_title">What's inside this QR code</p>
+      <div id="qr-view-details" class="field-list"></div>
     </div>
   </div>
 
@@ -703,12 +711,32 @@
       <div style="width:36px"></div>
     </header>
     <div class="view">
-      <p class="hint-text" style="margin:14px 16px" data-i18n="hint_field_picker">Name is always included. Pick anything else to include.</p>
+      <p class="hint-text" style="margin:14px 16px" data-i18n="hint_field_picker">Choose which fields to include, and in what order they'll appear.</p>
       <div style="display:flex;gap:8px;padding:0 16px 10px">
         <button type="button" class="btn-secondary" id="fp-select-all" style="flex:1;padding:8px" data-i18n="btn_select_all">Select all</button>
         <button type="button" class="btn-secondary" id="fp-select-none" style="flex:1;padding:8px" data-i18n="btn_select_none">None</button>
       </div>
       <div id="field-picker-list" style="padding:4px 16px"></div>
+      <div id="fp-qr-extras" hidden>
+        <p class="section-title" style="margin:18px 16px 6px" data-i18n="qr_options_title">QR code options</p>
+        <div class="form-group"><label data-i18n="qr_title_label">Title</label><input type="text" id="fp-qr-title" placeholder="e.g. Amir - Work card" data-i18n-ph="ph_qr_title" /></div>
+        <div class="form-group">
+          <label data-i18n="qr_logo_label">Logo</label>
+          <div id="fp-qr-logo-none" class="more-row" style="cursor:pointer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+            <div class="txt"><p class="t" data-i18n="btn_add_logo">Add a logo</p><p class="s" data-i18n="hint_qr_logo">Shown in the center of the QR code</p></div>
+          </div>
+          <div id="fp-qr-logo-set" class="more-row" hidden>
+            <img id="fp-qr-logo-thumb" src="" style="width:36px;height:36px;border-radius:8px;object-fit:contain;background:var(--surface);border:1px solid var(--border)" />
+            <div class="txt"><p class="t" data-i18n="qr_logo_current">Logo set</p><p class="s" data-i18n="hint_qr_logo_change">Tap to change</p></div>
+          </div>
+          <input type="file" id="fp-qr-logo-file" accept="image/*" hidden />
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px 2px;cursor:pointer">
+            <span style="font-size:13.5px;color:var(--text-muted)" data-i18n="qr_include_logo_toggle">Include logo in this QR code</span>
+            <input type="checkbox" id="fp-qr-use-logo" class="fs-toggle-input" />
+          </label>
+        </div>
+      </div>
       <div class="form-actions">
         <button class="btn-primary" id="btn-field-picker-confirm" style="width:100%" data-i18n="btn_continue">Continue</button>
       </div>

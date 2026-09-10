@@ -2,7 +2,15 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Material 3 visual redesign (this update)
+## QR code overhaul (this update)
+- **Two new contact fields**: Prefix (Dr., Eng., ...) and Department, editable on every contact and included in the vCard/QR field set.
+- **Full control over what's in a QR code, and in what order**: the field picker now lists every field — Prefix, First name, Last name, Job title, Department, Company, Phone numbers, Emails, Websites, Addresses, Custom fields — each individually toggleable, in that exact order. Previously the name was always forced in and company/job title were bundled as one all-or-nothing toggle.
+- **Custom fields are now actually included in QR codes and vCards.** They were silently dropped before — the export code never touched them at all.
+- **A logo in the middle of the QR code**: upload once (resized and stored on-device, no account needed), then choose per-QR-code whether to include it. Automatically switches to the QR standard's highest error-correction level so the code stays scannable — verified by actually decoding a generated logo'd QR code back to its original content, not just eyeballing it.
+- **A title for every QR code**: set one when generating, or rename anytime from its detail screen — shows in the QR list so you can tell codes apart at a glance instead of by contact name alone.
+- **The QR detail screen now shows what's actually inside it** — decoded straight from the QR's own stored data (not a separate copy that could drift), so what you see is exactly what a scanner would read.
+
+## Material 3 visual redesign
 The whole app now looks and feels like a real Google product — Material Design 3 (specifically "Material 3 Expressive," Google's 2025-2026 update), not just a color change.
 
 - **Real color science, not a guess**: the warm cream/gold palette was generated with Google's own `material-color-utilities` library — the exact algorithm Android's dynamic color system uses — from a single seed color, using the "TonalSpot" scheme. Light and dark are mathematically derived from the same seed, so they can never drift out of sync with each other.

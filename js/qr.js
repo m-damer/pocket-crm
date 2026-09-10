@@ -1,26 +1,96 @@
 // ---------------- QR rendering (uses the vendored qrcode.js encoder) ----------------
+// Async because embedding a logo means loading an <img> first — every
+// caller below already awaits this.
 function renderQRToCanvas(text, canvas, opts) {
   opts = opts || {};
-  const qr = qrcode(0, opts.ecLevel || "M"); // typeNumber 0 = auto-size to fit the data
-  qr.addData(text || " ");
-  qr.make();
-  const count = qr.getModuleCount();
-  const cell = opts.cellSize || 6;
-  const margin = opts.margin != null ? opts.margin : cell * 2;
-  const size = count * cell + margin * 2;
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas; // headless/test environments without canvas support
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = "#000000";
-  for (let r = 0; r < count; r++) {
-    for (let c = 0; c < count; c++) {
-      if (qr.isDark(r, c)) ctx.fillRect(margin + c * cell, margin + r * cell, cell, cell);
+  return new Promise((resolve) => {
+    const qr = qrcode(0, opts.ecLevel || (opts.logoDataUrl ? "H" : "M")); // typeNumber 0 = auto-size; H = high error-correction, needed so a center logo doesn't break scanning
+    qr.addData(text || " ");
+    qr.make();
+    const count = qr.getModuleCount();
+    const cell = opts.cellSize || 6;
+    const margin = opts.margin != null ? opts.margin : cell * 2;
+    const size = count * cell + margin * 2;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) { resolve(canvas); return; } // headless/test environments without canvas support
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = "#000000";
+    for (let r = 0; r < count; r++) {
+      for (let c = 0; c < count; c++) {
+        if (qr.isDark(r, c)) ctx.fillRect(margin + c * cell, margin + r * cell, cell, cell);
+      }
     }
+    if (!opts.logoDataUrl) { resolve(canvas); return; }
+    const img = new Image();
+    img.onload = () => {
+      // Logo covers ~22% of the code's width — well inside the ~30%
+      // damage the "H" error-correction level can recover from, with a
+      // white padded square behind it so the logo doesn't touch the
+      // surrounding modules.
+      const logoSize = size * 0.22;
+      const pad = logoSize * 0.14;
+      const cx = (size - logoSize) / 2;
+      const cy = (size - logoSize) / 2;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(cx - pad, cy - pad, logoSize + pad * 2, logoSize + pad * 2);
+      ctx.drawImage(img, cx, cy, logoSize, logoSize);
+      resolve(canvas);
+    };
+    img.onerror = () => resolve(canvas); // corrupt/unreadable logo — ship the plain QR rather than fail the whole render
+    img.src = opts.logoDataUrl;
+  });
+}
+
+// Resizes an uploaded logo image down to a reasonable max dimension before
+// storing it as a data URL — an unconstrained phone-camera photo would
+// otherwise bloat Settings (and every QR re-render) for no visual benefit,
+// since the logo only ever renders at a small fraction of the QR's size.
+function resizeImageFileToDataUrl(file, maxDim) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("unreadable image"));
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleQRLogoFileChosen(file) {
+  if (!file) return;
+  try {
+    const dataUrl = await resizeImageFileToDataUrl(file, 240);
+    await Settings.update({ logoDataUrl: dataUrl });
+    refreshQRLogoControls(true);
+  } catch (e) {
+    showToast(t("toast_logo_read_failed"));
   }
-  return canvas;
+}
+
+async function refreshQRLogoControls(forceIncludeOn) {
+  const settings = await Settings.get();
+  const has = !!settings.logoDataUrl;
+  document.getElementById("fp-qr-logo-none").hidden = has;
+  document.getElementById("fp-qr-logo-set").hidden = !has;
+  if (has) document.getElementById("fp-qr-logo-thumb").src = settings.logoDataUrl;
+  document.getElementById("fp-qr-use-logo").disabled = !has;
+  if (!has) document.getElementById("fp-qr-use-logo").checked = false;
+  else if (forceIncludeOn) document.getElementById("fp-qr-use-logo").checked = true;
 }
 
 // ---------------- Shared field picker (used by QR generation + bulk share) ----------------
@@ -47,10 +117,15 @@ function renderFieldPicker() {
   });
 }
 
-function openFieldPicker(onConfirm, presetKeys) {
+async function openFieldPicker(onConfirm, presetKeys, isQR) {
   fieldPickerSelected = (presetKeys || SHARE_FIELD_ALL_KEYS).slice();
   fieldPickerOnConfirm = onConfirm;
   renderFieldPicker();
+  document.getElementById("fp-qr-extras").hidden = !isQR;
+  if (isQR) {
+    document.getElementById("fp-qr-title").value = "";
+    await refreshQRLogoControls(false);
+  }
   showScreen("screen-field-picker");
 }
 
@@ -98,7 +173,7 @@ async function confirmQRContactPicker() {
   const all = await DB.getAll();
   qrPendingContacts = all.filter((c) => qrContactPickerSelected.has(c.id));
   closeScreen("screen-qr-contact-picker");
-  openFieldPicker(handleQRFieldsConfirmed);
+  openFieldPicker(handleQRFieldsConfirmed, null, true);
 }
 
 // ---------------- QR source: phone contacts (native picker) ----------------
@@ -114,15 +189,16 @@ async function pickQRFromPhoneContacts() {
       const full = (p.name && p.name[0]) || "";
       const sp = full.indexOf(" ");
       return {
+        namePrefix: "",
         firstName: sp === -1 ? full : full.slice(0, sp),
         lastName: sp === -1 ? "" : full.slice(sp + 1),
-        company: "", jobTitle: "",
+        company: "", jobTitle: "", department: "",
         phones: (p.tel || []).map((v) => ({ label: "mobile", value: v })),
         emails: (p.email || []).map((v) => ({ label: "other", value: v })),
-        addresses: [], websites: [], birthday: "", notesList: [],
+        addresses: [], websites: [], customFields: [], birthday: "", notesList: [],
       };
     });
-    openFieldPicker(handleQRFieldsConfirmed);
+    openFieldPicker(handleQRFieldsConfirmed, null, true);
   } catch (e) {
     // user cancelled the native picker — nothing to do
   }
@@ -130,15 +206,18 @@ async function pickQRFromPhoneContacts() {
 
 // ---------------- QR source: manual entry ----------------
 function openQRManualForm() {
-  ["qr-manual-first", "qr-manual-last", "qr-manual-company", "qr-manual-phone", "qr-manual-email"].forEach((id) => {
+  ["qr-manual-prefix", "qr-manual-first", "qr-manual-last", "qr-manual-jobtitle", "qr-manual-department", "qr-manual-company", "qr-manual-phone", "qr-manual-email"].forEach((id) => {
     document.getElementById(id).value = "";
   });
   showScreen("screen-qr-manual");
 }
 
 function confirmQRManualForm() {
+  const prefix = document.getElementById("qr-manual-prefix").value.trim();
   const first = document.getElementById("qr-manual-first").value.trim();
   const last = document.getElementById("qr-manual-last").value.trim();
+  const jobTitle = document.getElementById("qr-manual-jobtitle").value.trim();
+  const department = document.getElementById("qr-manual-department").value.trim();
   const company = document.getElementById("qr-manual-company").value.trim();
   const phone = document.getElementById("qr-manual-phone").value.trim();
   const email = document.getElementById("qr-manual-email").value.trim();
@@ -147,24 +226,31 @@ function confirmQRManualForm() {
     return;
   }
   qrPendingContacts = [{
-    firstName: first, lastName: last, company, jobTitle: "",
+    namePrefix: prefix, firstName: first, lastName: last, company, jobTitle, department,
     phones: phone ? [{ label: "mobile", value: phone }] : [],
     emails: email ? [{ label: "other", value: email }] : [],
-    addresses: [], websites: [], birthday: "", notesList: [],
+    addresses: [], websites: [], customFields: [], birthday: "", notesList: [],
   }];
   closeScreen("screen-qr-manual");
-  openFieldPicker(handleQRFieldsConfirmed);
+  openFieldPicker(handleQRFieldsConfirmed, null, true);
 }
 
 // ---------------- QR generation ----------------
 let qrPendingContacts = [];
 
 async function handleQRFieldsConfirmed(selectedKeys) {
+  const isQR = !document.getElementById("fp-qr-extras").hidden;
+  const customTitle = isQR ? document.getElementById("fp-qr-title").value.trim() : "";
+  const includeLogo = isQR && document.getElementById("fp-qr-use-logo").checked;
+
   const generated = [];
   for (const c of qrPendingContacts) {
     const vcardText = contactToVCard(c, selectedKeys);
-    const label = fullName(c) || c.company || t("qr_code_fallback");
-    const entry = await QRCodes.add({ label, vcardText });
+    // A custom title only makes sense for a single contact — for a batch
+    // (multiple contacts picked at once), each one still gets its own
+    // sensible auto label rather than all sharing one typed-in title.
+    const label = (qrPendingContacts.length === 1 && customTitle) || fullName(c) || c.company || t("qr_code_fallback");
+    const entry = await QRCodes.add({ label, vcardText, includeLogo });
     generated.push(entry);
   }
   qrPendingContacts = [];
@@ -172,7 +258,7 @@ async function handleQRFieldsConfirmed(selectedKeys) {
   await renderQRList();
   showScreen("screen-qr-list");
   if (generated.length === 1) {
-    openQRView(generated[0].id);
+    await openQRView(generated[0].id);
   } else if (generated.length > 1) {
     showToast(t("toast_qr_generated", { n: generated.length }));
   }
@@ -195,16 +281,38 @@ async function renderQRList() {
       </div>
     </div>
   `).join("");
-  codes.forEach((q) => {
+  const settings = await Settings.get();
+  for (const q of codes) {
     const canvas = document.getElementById(`qr-thumb-${q.id}`);
-    if (canvas) renderQRToCanvas(q.vcardText, canvas, { cellSize: 2, margin: 4 });
-  });
+    if (canvas) await renderQRToCanvas(q.vcardText, canvas, { cellSize: 2, margin: 4, logoDataUrl: q.includeLogo ? settings.logoDataUrl : "" });
+  }
   wrap.querySelectorAll(".qr-row").forEach((row) => {
     row.addEventListener("click", () => openQRView(row.dataset.id));
   });
 }
 
 let qrViewingId = null;
+
+// Field order here mirrors SHARE_FIELD_ALL_KEYS in vcard.js, so the detail
+// list always reads in the same order the field picker offered them in.
+function renderQRDetailsList(parsed) {
+  const wrap = document.getElementById("qr-view-details");
+  const rows = [];
+  const nameLine = [parsed.namePrefix, parsed.firstName, parsed.lastName].filter(Boolean).join(" ");
+  if (nameLine) rows.push([t("field_name"), nameLine]);
+  if (parsed.jobTitle) rows.push([t("field_job_title"), parsed.jobTitle]);
+  if (parsed.department) rows.push([t("field_department"), parsed.department]);
+  if (parsed.company) rows.push([t("field_meta_company"), parsed.company]);
+  (parsed.phones || []).forEach((p) => rows.push([phoneEmailLabel(p.label), p.value]));
+  (parsed.emails || []).forEach((e) => rows.push([phoneEmailLabel(e.label), e.value]));
+  (parsed.websites || []).forEach((w) => rows.push([phoneEmailLabel(w.label), w.value]));
+  (parsed.addresses || []).forEach((a) => rows.push([phoneEmailLabel(a.label), a.value]));
+  (parsed.customFields || []).forEach((f) => rows.push([f.label || t("field_custom_fields"), f.value]));
+
+  wrap.innerHTML = rows.length === 0
+    ? `<p class="hint-text" style="margin:0 16px">${t("qr_details_empty")}</p>`
+    : rows.map(([label, value]) => `<div class="field-row"><p class="label">${escapeHTML(label)}</p><p class="value">${escapeHTML(value)}</p></div>`).join("");
+}
 
 async function openQRView(id) {
   const codes = await QRCodes.getAll();
@@ -213,9 +321,33 @@ async function openQRView(id) {
   qrViewingId = id;
   document.getElementById("qr-view-label").textContent = q.label || t("qr_code_fallback");
   document.getElementById("qr-view-date").textContent = t("qr_generated_prefix", { date: fmtDate(q.createdAt) });
+  const settings = await Settings.get();
   const canvas = document.getElementById("qr-view-canvas");
-  renderQRToCanvas(q.vcardText, canvas, { cellSize: 8, margin: 16 });
+  await renderQRToCanvas(q.vcardText, canvas, { cellSize: 8, margin: 16, logoDataUrl: q.includeLogo ? settings.logoDataUrl : "" });
+  const [parsed] = parseVCards(q.vcardText);
+  renderQRDetailsList(parsed || {});
   showScreen("screen-qr-view");
+}
+
+function openQRTitleEditor() {
+  if (!qrViewingId) return;
+  openSheet({
+    title: t("qr_edit_title_title"),
+    date: "",
+    bodyHTML: `
+      <div class="form-group" style="padding:0 0 4px"><input type="text" id="qr-title-input" placeholder="e.g. Amir - Work card" data-i18n-ph="ph_qr_title" /></div>
+      <div class="form-actions" style="padding:14px 0 4px"><button class="btn-primary" id="btn-qr-title-save" style="width:100%">${t("btn_save")}</button></div>
+    `,
+  });
+  const input = document.getElementById("qr-title-input");
+  input.value = document.getElementById("qr-view-label").textContent;
+  document.getElementById("btn-qr-title-save").addEventListener("click", async () => {
+    const newLabel = input.value.trim() || t("qr_code_fallback");
+    await QRCodes.update(qrViewingId, { label: newLabel });
+    closeNoteSheet();
+    document.getElementById("qr-view-label").textContent = newLabel;
+    await renderQRList();
+  });
 }
 
 function qrCanvasToBlob(canvas) {

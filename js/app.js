@@ -551,9 +551,19 @@ document.getElementById("btn-qr-manual-cancel").addEventListener("click", () => 
 document.getElementById("btn-qr-manual-continue").addEventListener("click", confirmQRManualForm);
 
 document.getElementById("btn-qr-view-back").addEventListener("click", () => closeScreen("screen-qr-view"));
+document.getElementById("btn-qr-view-edit-title").addEventListener("click", openQRTitleEditor);
 document.getElementById("btn-qr-view-delete").addEventListener("click", deleteQRCode);
 document.getElementById("btn-qr-download").addEventListener("click", downloadQRImage);
 document.getElementById("btn-qr-share").addEventListener("click", shareQRImage);
+
+// ---------------- Wiring: QR logo upload ----------------
+document.getElementById("fp-qr-logo-none").addEventListener("click", () => document.getElementById("fp-qr-logo-file").click());
+document.getElementById("fp-qr-logo-set").addEventListener("click", () => document.getElementById("fp-qr-logo-file").click());
+document.getElementById("fp-qr-logo-file").addEventListener("change", (e) => {
+  const file = e.target.files && e.target.files[0];
+  handleQRLogoFileChosen(file);
+  e.target.value = "";
+});
 
 // ---------------- Wiring: Schedule ----------------
 document.getElementById("btn-ev-cancel").addEventListener("click", closeAllScreens);

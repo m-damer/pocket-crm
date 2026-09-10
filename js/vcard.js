@@ -4,33 +4,50 @@ function vcardEscape(s) {
 }
 
 // Field keys used by the shared field picker (QR generation + bulk share).
-// Name/nickname are always included, like an identity — everything else is
-// optional and gated behind `includeKeys`. Pass no `includeKeys` (or null)
-// to keep the original full-export behavior. Labels are resolved live via
-// shareFieldMeta() so they follow the active language.
-const SHARE_FIELD_ALL_KEYS = ["company", "phones", "emails", "addresses", "websites", "birthday", "notes"];
+// Order here is the order they're offered in the picker AND the order
+// fields appear in the "what's inside this QR" detail view — both just
+// iterate this array, so reordering the export only ever means editing
+// this one line. Nothing is unconditionally included anymore (not even
+// the name) — pass no `includeKeys` (or null) to keep the original
+// full-export behavior. Labels are resolved live via shareFieldMeta() so
+// they follow the active language.
+const SHARE_FIELD_ALL_KEYS = [
+  "namePrefix", "firstName", "lastName", "jobTitle", "department", "company",
+  "phones", "emails", "websites", "addresses", "customFields",
+];
 function shareFieldMeta() {
   return {
+    namePrefix: t("field_name_prefix"),
+    firstName: t("label_first_name"),
+    lastName: t("label_last_name"),
+    jobTitle: t("field_job_title"),
+    department: t("field_department"),
     company: t("field_meta_company"),
     phones: t("field_phones"),
     emails: t("field_emails"),
-    addresses: t("field_addresses"),
     websites: t("field_websites"),
-    birthday: t("field_birthday"),
-    notes: t("field_meta_notes"),
+    addresses: t("field_addresses"),
+    customFields: t("field_custom_fields"),
   };
 }
 
 function contactToVCard(c, includeKeys) {
   const include = (key) => !includeKeys || includeKeys.includes(key);
   const lines = ["BEGIN:VCARD", "VERSION:3.0"];
-  lines.push(`N:${vcardEscape(c.lastName)};${vcardEscape(c.firstName)};;;`);
-  lines.push(`FN:${vcardEscape(fullName(c))}`);
+
+  const prefix = include("namePrefix") ? (c.namePrefix || "") : "";
+  const given = include("firstName") ? (c.firstName || "") : "";
+  const family = include("lastName") ? (c.lastName || "") : "";
+  lines.push(`N:${vcardEscape(family)};${vcardEscape(given)};;${vcardEscape(prefix)};`);
+  const fn = [prefix, given, family].filter(Boolean).join(" ") || c.company || t("qr_code_fallback");
+  lines.push(`FN:${vcardEscape(fn)}`);
   if (c.nickname) lines.push(`NICKNAME:${vcardEscape(c.nickname)}`);
-  if (include("company")) {
-    if (c.jobTitle) lines.push(`TITLE:${vcardEscape(c.jobTitle)}`);
-    if (c.company) lines.push(`ORG:${vcardEscape(c.company)}`);
-  }
+
+  if (include("jobTitle") && c.jobTitle) lines.push(`TITLE:${vcardEscape(c.jobTitle)}`);
+  const org = include("company") ? (c.company || "") : "";
+  const dept = include("department") ? (c.department || "") : "";
+  if (org || dept) lines.push(`ORG:${vcardEscape(org)};${vcardEscape(dept)}`);
+
   if (include("phones")) {
     (c.phones || []).forEach((p) => {
       const type = p.label === "mobile" ? "CELL" : (p.label || "OTHER").toUpperCase();
@@ -53,8 +70,24 @@ function contactToVCard(c, includeKeys) {
       lines.push(`URL;TYPE=${(w.label || "OTHER").toUpperCase()}:${vcardEscape(w.value)}`);
     });
   }
-  if (include("birthday") && c.birthday) lines.push(`BDAY:${c.birthday.replace(/-/g, "")}`);
-  if (include("notes")) {
+  if (include("customFields")) {
+    // X- properties are the standard way to carry non-standard data in a
+    // vCard — any real contacts app that doesn't recognize them just
+    // ignores them, so this is safe to include even for scanners outside
+    // this app. LABEL param carries the field's own name; a stray `;` or
+    // `:` in a user-typed label would break the parameter, so those are
+    // stripped here specifically (vcardEscape alone isn't enough inside a
+    // parameter, only inside a content value).
+    (c.customFields || []).forEach((f) => {
+      if (!f.label && !f.value) return;
+      const safeLabel = String(f.label || t("field_custom_fields")).replace(/[;:]/g, " ");
+      lines.push(`X-CUSTOM;LABEL=${safeLabel}:${vcardEscape(f.value)}`);
+    });
+  }
+  if (!includeKeys) {
+    // Full/legacy export (e.g. "Save to phone", "Export all") — keep
+    // birthday and notes too, same as before this field picker existed.
+    if (c.birthday) lines.push(`BDAY:${c.birthday.replace(/-/g, "")}`);
     (c.notesList || []).filter((n) => n.kind === "note" && n.text).forEach((n) => {
       lines.push(`NOTE:${vcardEscape(n.title ? `${n.title}: ${n.text}` : n.text)}`);
     });
@@ -139,6 +172,7 @@ function parseVCards(text) {
       const parts = value.split(";").map(vcardUnescape);
       current.lastName = current.lastName || parts[0] || "";
       current.firstName = current.firstName || parts[1] || "";
+      current.namePrefix = current.namePrefix || parts[3] || "";
     } else if (key === "FN" && !current.firstName && !current.lastName) {
       const full = vcardUnescape(value).trim();
       const sp = full.indexOf(" ");
@@ -149,7 +183,9 @@ function parseVCards(text) {
     } else if (key === "TITLE") {
       current.jobTitle = vcardUnescape(value);
     } else if (key === "ORG") {
-      current.company = vcardUnescape(value.split(";")[0]);
+      const parts = value.split(";").map(vcardUnescape);
+      current.company = parts[0] || "";
+      current.department = parts[1] || "";
     } else if (key === "BDAY") {
       const digits = value.replace(/[^\d]/g, "");
       if (digits.length === 8) current.birthday = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
@@ -163,6 +199,10 @@ function parseVCards(text) {
       const parts = value.split(";").map(vcardUnescape).filter(Boolean);
       current.addresses = current.addresses || [];
       current.addresses.push({ label: vcardTypeToLabel(rawKey), value: parts.join(", "), mapsLink: "" });
+    } else if (key === "X-CUSTOM") {
+      const m = /LABEL=([^;:]*)/i.exec(rawKey);
+      current.customFields = current.customFields || [];
+      current.customFields.push({ label: m ? m[1] : "", value: vcardUnescape(value) });
     } else if (key === "URL") {
       if (/-MAP$/i.test(rawKey) && current.addresses && current.addresses.length) {
         current.addresses[current.addresses.length - 1].mapsLink = vcardUnescape(value);

@@ -219,11 +219,13 @@ const DB = {
     const record = {
       id: uid("c"),
       photoDataUrl: "",
+      namePrefix: "",
       firstName: "",
       lastName: "",
       nickname: "",
       company: "",
       jobTitle: "",
+      department: "",
       phones: [], // {id, label: mobile|home|work|other, value}
       emails: [], // {id, label, value}
       addresses: [], // {id, label, value, mapsLink}
@@ -634,13 +636,20 @@ const QRCodes = {
     const s = await Settings.get();
     const qrCodes = (s.qrCodes || []).slice();
     const entry = {
-      id: uid("q"), label: "", vcardText: "",
+      id: uid("q"), label: "", vcardText: "", includeLogo: false,
       createdAt: new Date().toISOString(),
       ...record,
     };
     qrCodes.unshift(entry);
     await Settings.update({ qrCodes });
     return entry;
+  },
+
+  async update(id, patch) {
+    const s = await Settings.get();
+    const qrCodes = (s.qrCodes || []).map((q) => (q.id === id ? { ...q, ...patch } : q));
+    await Settings.update({ qrCodes });
+    return qrCodes.find((q) => q.id === id);
   },
 
   async remove(id) {

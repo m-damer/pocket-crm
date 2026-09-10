@@ -1482,7 +1482,7 @@ async function openForm(id) {
   formPhotoDataUrl = "";
   document.getElementById("form-title").textContent = id ? t("form_title_edit") : t("form_title_new");
 
-  ["first", "last", "nickname", "company", "jobtitle", "birthday"].forEach((f) => {
+  ["prefix", "first", "last", "nickname", "company", "jobtitle", "department", "birthday"].forEach((f) => {
     const el = document.getElementById("f-" + f);
     if (el) el.value = "";
   });
@@ -1497,11 +1497,13 @@ async function openForm(id) {
   if (id) {
     const c = await DB.get(id);
     if (c) {
+      document.getElementById("f-prefix").value = c.namePrefix || "";
       document.getElementById("f-first").value = c.firstName || "";
       document.getElementById("f-last").value = c.lastName || "";
       document.getElementById("f-nickname").value = c.nickname || "";
       document.getElementById("f-company").value = c.company || "";
       document.getElementById("f-jobtitle").value = c.jobTitle || "";
+      document.getElementById("f-department").value = c.department || "";
       document.getElementById("f-birthday").value = c.birthday || "";
       formPhones = (c.phones || []).map((p) => ({ ...p }));
       formEmails = (c.emails || []).map((e) => ({ ...e }));
@@ -1561,11 +1563,13 @@ function setFormCategory(cat) {
 
 async function saveForm() {
   const payload = {
+    namePrefix: document.getElementById("f-prefix").value.trim(),
     firstName: document.getElementById("f-first").value.trim(),
     lastName: document.getElementById("f-last").value.trim(),
     nickname: document.getElementById("f-nickname").value.trim(),
     company: document.getElementById("f-company").value.trim(),
     jobTitle: document.getElementById("f-jobtitle").value.trim(),
+    department: document.getElementById("f-department").value.trim(),
     birthday: document.getElementById("f-birthday").value,
     phones: readMultiFieldEditor("f-phones", false),
     emails: readMultiFieldEditor("f-emails", false),
