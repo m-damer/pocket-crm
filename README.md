@@ -2,7 +2,13 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## QR code overhaul (this update)
+## QR code fixes (this update)
+Two real bugs from the QR overhaul, reported after testing:
+- **The Manual entry QR flow could only ever produce 8 fields, with single values.** The field *picker* correctly listed all 11 fields including Website/Address/Custom fields, but Manual Entry itself had no input for them at all — and Phone/Email only took one value each, not "(Multiple)" as intended. Fixed by giving Manual Entry the exact same multi-entry field editors the real contact form uses (add/remove rows, same as Phones/Emails already had) — now it has full parity: multiple phones, emails, websites, addresses, and custom fields, all the way through to the generated QR code.
+- **QR codes with a logo could fail to scan.** Found a genuine, specification-documented cause: the QR code's "quiet zone" (the required blank border around the whole code) was only 2 modules wide — the ISO/IEC 18004 standard requires a minimum of 4. That's a real-world scanning problem on its own, logo or not, and combined with a logo it made a marginal code more likely to fail. Fixed the margin to meet spec, and also reduced the logo's footprint (~18% of the code's width now, down from ~22%) as extra headroom. Verified by actually decoding a generated QR code back to its original content with a real QR-reader library — including a stress test with every field selected, multiple phone numbers/emails/websites/addresses, and a logo all at once — not just visual inspection.
+  - Honest caveat: I can't test with a physical phone camera from here, so I can't personally guarantee every scanner app on every device will succeed in every lighting condition. What I can say is the margin bug was a genuine spec violation independent of any device, and the fix plus the more conservative logo sizing should meaningfully improve real-world reliability. Worth specifically re-testing this one with your own phone.
+
+## QR code overhaul
 - **Two new contact fields**: Prefix (Dr., Eng., ...) and Department, editable on every contact and included in the vCard/QR field set.
 - **Full control over what's in a QR code, and in what order**: the field picker now lists every field — Prefix, First name, Last name, Job title, Department, Company, Phone numbers, Emails, Websites, Addresses, Custom fields — each individually toggleable, in that exact order. Previously the name was always forced in and company/job title were bundled as one all-or-nothing toggle.
 - **Custom fields are now actually included in QR codes and vCards.** They were silently dropped before — the export code never touched them at all.
