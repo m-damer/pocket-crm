@@ -1,4 +1,4 @@
-const CACHE_NAME = "crm-cache-v16";
+const CACHE_NAME = "crm-cache-v17";
 const ASSETS = [
   "./",
   "./index.html",
@@ -14,15 +14,33 @@ const ASSETS = [
   "./js/schedule.js",
   "./js/qr.js",
   "./js/reports.js",
+  "./js/pipeline.js",
   "./js/app.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png",
 ];
+// Cross-origin, best-effort only — cache.addAll() on the main ASSETS list
+// is all-or-nothing, so if this one external request failed on a slow or
+// offline first install, it must never be allowed to take the rest of the
+// app's offline caching down with it. Fetched separately and swallowed on
+// failure; the ordinary fetch handler below will pick it up and cache it
+// on whatever later request actually succeeds anyway.
+const BEST_EFFORT_ASSETS = [
+  "https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) =>
+        cache.addAll(ASSETS).then(() =>
+          Promise.all(BEST_EFFORT_ASSETS.map((url) =>
+            cache.add(url).catch(() => { /* offline or blocked — fetch handler covers it later */ })
+          ))
+        )
+      )
+      .then(() => self.skipWaiting())
   );
 });
 
