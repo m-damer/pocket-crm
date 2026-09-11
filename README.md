@@ -2,7 +2,13 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Every icon replaced with authentic Google Material Symbols (this update)
+## Searchable contact picker in Schedule, and a capped "Upcoming" block (this update)
+- **Linking a contact to a task or meeting now works like Pipeline's deal picker**: instead of a plain dropdown with every contact listed flat, tapping "Link to contact" opens a real search screen — type to filter by name or company, tap to select. Same component Pipeline already used, just reused here for consistency.
+- **The "Upcoming" section on a contact's Info tab no longer grows the whole page** when there are a lot of open tasks/meetings — it's now capped to roughly 3 rows tall, with its own internal scroll for anything beyond that (a slightly visible edge of the next row peeks through, so it's clear there's more to scroll to).
+- **Tapping any activity in that list now opens its full details** — reuses the same event-detail screen already used everywhere else in the app (date, time, linked contact, status, edit/delete), rather than leaving those rows inert like before.
+- Verified with 16 automated tests plus a full visual pass in both English and Arabic.
+
+## Every icon replaced with authentic Google Material Symbols
 Every single icon in the app — over 90 instances covering roughly 45 distinct icons — was replaced with the real, official Material Symbols path data, fetched directly from Google's own open-source icon repository (not redrawn from memory or approximated). The previous icon set used simple stroke-based line drawings that generally resembled Material icons; these are now the actual shapes Google ships in its own products.
 
 - **Fetched from source, not guessed**: every icon's path data comes straight from `google/material-design-icons` on GitHub — the same files Google's own apps use.
