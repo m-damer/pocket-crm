@@ -669,6 +669,17 @@ html[lang="ar"] body {
 }
 .field-row .label { font-size: 11.5px; color: var(--text-muted); margin: 0 0 3px; font-weight: 600; }
 .field-row .value { font-size: 14.5px; margin: 0; word-break: break-word; }
+/* Caps the "Upcoming" block on a contact's Info tab to about 3 rows tall —
+   past that it scrolls internally instead of pushing the rest of the page
+   down, since a contact with many open tasks/meetings could otherwise make
+   this one section dominate the whole screen. */
+.linked-events-scroll {
+  max-height: 202px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding-right: 2px;
+}
+.linked-events-scroll .field-row:last-child { margin-bottom: 2px; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag {
   background: var(--blue-soft); color: var(--blue);
