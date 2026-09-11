@@ -1,9 +1,16 @@
 function eventTypeLabel(type) {
-  return type === "meeting" ? t("event_type_meeting") : t("event_type_task");
+  if (type === "meeting") return t("event_type_meeting");
+  if (type === "visit") return t("event_type_visit");
+  return t("event_type_task");
 }
+// Was hardcoded hex left over from the old emerald-era brand (never
+// updated during the Material 3 pass) — now references the same design
+// tokens everything else uses, so these badges correctly adapt between
+// light and dark instead of showing a fixed color regardless of theme.
 const EVENT_TYPE_META = {
-  task: { color: "#6B5FB3", soft: "#EFEDFA" },
-  meeting: { color: "#10845D", soft: "#D7F4EA" },
+  task: { color: "var(--md-extended-on-accent-container)", soft: "var(--md-extended-accent-container)" },
+  meeting: { color: "var(--blue)", soft: "var(--blue-soft)" },
+  visit: { color: "var(--md-sys-color-on-tertiary-container)", soft: "var(--md-sys-color-tertiary-container)" },
 };
 
 function pad2(n) { return String(n).padStart(2, "0"); }
@@ -163,35 +170,103 @@ const Schedule = {
     }
     if (due.length) await this.load();
   },
-
-  // ---------------- Route planning ----------------
-  routeToday() {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const endOfToday = startOfToday + 86400000;
-
-    const stops = this.all
-      .filter((e) => e.type === "meeting" && !e.completed)
-      .filter((e) => { const t2 = new Date(e.when).getTime(); return t2 >= startOfToday && t2 < endOfToday; })
-      .sort((a, b) => a.when.localeCompare(b.when))
-      .map((e) => {
-        const c = e.contactId ? Contacts.all.find((c) => c.id === e.contactId) : null;
-        const addr = c ? primaryAddress(c) : null;
-        return addr ? addr.value : null;
-      })
-      .filter(Boolean);
-
-    if (stops.length === 0) {
-      showToast(t("toast_no_meetings_with_address"));
-      return;
-    }
-    const destination = stops[stops.length - 1];
-    const waypoints = stops.slice(0, -1);
-    let url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
-    if (waypoints.length) url += `&waypoints=${waypoints.map(encodeURIComponent).join("|")}`;
-    window.open(url, "_blank", "noopener");
-  },
 };
+
+// ---------------- Day Planner (visit routing) ----------------
+// Replaces the old routeToday() — that quietly built a route straight
+// from a header icon tap; this version shows the actual list of visits
+// first (with manual reordering), then builds the route from whatever
+// order they end up in, which is what "planning" a day of visits
+// actually means rather than just firing off whatever the calendar
+// happened to sort them into.
+let plannerDate = "";
+
+function todayDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+async function openDayPlanner() {
+  plannerDate = todayDateStr();
+  document.getElementById("planner-date").value = plannerDate;
+  await renderPlannerList();
+  showScreen("screen-day-planner");
+}
+
+async function plannerVisitsForDate(dateStr) {
+  const all = await Events.getAll();
+  return all
+    .filter((e) => e.type === "visit" && !e.completed)
+    .filter((e) => toLocalInputParts(e.when).date === dateStr)
+    .sort((a, b) => (a.visitOrder || 0) - (b.visitOrder || 0) || a.when.localeCompare(b.when));
+}
+
+async function renderPlannerList() {
+  const wrap = document.getElementById("planner-list");
+  const visits = await plannerVisitsForDate(plannerDate);
+  if (visits.length === 0) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:32px 16px"><p>${t("empty_no_visits_planned")}</p></div>`;
+    return;
+  }
+  wrap.innerHTML = visits.map((e, idx) => {
+    const c = e.contactId ? Contacts.all.find((c) => c.id === e.contactId) : null;
+    return `
+      <div class="planner-row" data-id="${e.id}">
+        <div class="planner-row-order">
+          <button type="button" class="icon-btn planner-up" ${idx === 0 ? "disabled" : ""}><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M480-528 296-344l-56-56 240-240 240 240-56 56-184-184Z"/></svg></button>
+          <button type="button" class="icon-btn planner-down" ${idx === visits.length - 1 ? "disabled" : ""}><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M480-344 240-584l56-56 184 184 184-184 56 56-240 240Z"/></svg></button>
+        </div>
+        <div class="planner-row-info">
+          <p class="planner-row-title">${escapeHTML(e.title || t("untitled_event"))}</p>
+          <p class="planner-row-sub">${c ? escapeHTML(fullName(c)) : ""}${c && primaryAddress(c) ? " \u00b7 " + escapeHTML(primaryAddress(c).value) : ""}</p>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  wrap.querySelectorAll(".planner-up").forEach((btn) => {
+    btn.addEventListener("click", () => swapPlannerOrder(btn.closest(".planner-row").dataset.id, -1));
+  });
+  wrap.querySelectorAll(".planner-down").forEach((btn) => {
+    btn.addEventListener("click", () => swapPlannerOrder(btn.closest(".planner-row").dataset.id, 1));
+  });
+}
+
+async function swapPlannerOrder(id, direction) {
+  const visits = await plannerVisitsForDate(plannerDate);
+  const idx = visits.findIndex((e) => e.id === id);
+  const swapIdx = idx + direction;
+  if (idx === -1 || swapIdx < 0 || swapIdx >= visits.length) return;
+  // visitOrder values are just this list's positions, 0/1/2/... — a swap
+  // only ever needs to trade the two adjacent numbers, not renumber
+  // everything else.
+  const a = visits[idx], b = visits[swapIdx];
+  const orderA = a.visitOrder || 0, orderB = b.visitOrder || 0;
+  await Events.update(a.id, { visitOrder: orderB === orderA ? swapIdx : orderB });
+  await Events.update(b.id, { visitOrder: orderB === orderA ? idx : orderA });
+  await renderPlannerList();
+}
+
+async function getPlannerRoute() {
+  const visits = await plannerVisitsForDate(plannerDate);
+  const stops = visits
+    .map((e) => {
+      const c = e.contactId ? Contacts.all.find((c) => c.id === e.contactId) : null;
+      const addr = c ? primaryAddress(c) : null;
+      return addr ? addr.value : null;
+    })
+    .filter(Boolean);
+
+  if (stops.length === 0) {
+    showToast(t("toast_no_meetings_with_address"));
+    return;
+  }
+  const destination = stops[stops.length - 1];
+  const waypoints = stops.slice(0, -1);
+  let url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+  if (waypoints.length) url += `&waypoints=${waypoints.map(encodeURIComponent).join("|")}`;
+  window.open(url, "_blank", "noopener");
+}
 
 // ---------------- Add / Edit event form ----------------
 let eventEditingId = null;
@@ -256,6 +331,8 @@ async function renderEventContactPickerList(query) {
 function setEventType(type) {
   eventType = type;
   document.querySelectorAll("#ev-type button").forEach((b) => b.classList.toggle("active", b.dataset.type === type));
+  document.getElementById("ev-purpose-group").hidden = type !== "visit";
+  document.getElementById("ev-outcome-group").hidden = type !== "visit";
 }
 
 async function openEventForm(id, presets) {
@@ -267,6 +344,8 @@ async function openEventForm(id, presets) {
   document.getElementById("ev-title").value = "";
   document.getElementById("ev-notes").value = "";
   document.getElementById("ev-remind").checked = false;
+  document.getElementById("ev-purpose").value = "";
+  document.getElementById("ev-outcome").value = "";
   const defaults = toLocalInputParts(now.toISOString());
   document.getElementById("ev-date").value = defaults.date;
   document.getElementById("ev-time").value = defaults.time;
@@ -281,6 +360,8 @@ async function openEventForm(id, presets) {
       document.getElementById("ev-title").value = e.title || "";
       document.getElementById("ev-notes").value = e.notes || "";
       document.getElementById("ev-remind").checked = !!e.remind;
+      document.getElementById("ev-purpose").value = e.purpose || "";
+      document.getElementById("ev-outcome").value = e.outcome || "";
       const parts = toLocalInputParts(e.when);
       document.getElementById("ev-date").value = parts.date;
       document.getElementById("ev-time").value = parts.time;
@@ -362,6 +443,8 @@ async function saveEventForm() {
     contactId: evFormContactId || null,
     remind,
     notes: document.getElementById("ev-notes").value,
+    purpose: document.getElementById("ev-purpose").value.trim(),
+    outcome: document.getElementById("ev-outcome").value.trim(),
   };
   if (eventEditingId) {
     payload.notified = false; // allow re-notification if time changed

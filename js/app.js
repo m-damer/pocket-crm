@@ -1,10 +1,22 @@
-// ---------------- Theme mode (light / dark / system) ----------------
+// ---------------- Theme mode (light / dark / system) + color theme ----------------
 // Applies Settings.themeMode by toggling data-theme on <html> — the CSS
 // in styles.css does the actual recoloring via [data-theme="dark"] and
 // the prefers-color-scheme media query. "System" means no data-theme
 // attribute at all, letting the media query decide; explicit light/dark
 // pins it regardless of the OS setting.
 let themeMediaQuery = null;
+
+// Same light/dark surface color for each of the 8 color themes, used only
+// for the OS status-bar (theme-color meta) — the actual page colors come
+// from the CSS custom properties in styles.css, this is just keeping the
+// status bar in sync with whichever one is active. Mirrors the table in
+// index.html's inline instant-paint script (duplicated there on purpose:
+// that one has to run before this file has even loaded).
+const COLOR_THEME_META_COLORS = {
+  gold: ["#fcf2e5", "#17130b"], green: ["#f2f5ea", "#191d16"], blue: ["#f2f3f9", "#191c20"],
+  terracotta: ["#fff1ec", "#231a16"], violet: ["#f9f1f9", "#1e1a20"], teal: ["#eff5f3", "#161d1c"],
+  rose: ["#fff0f3", "#22191c"], slate: ["#f5f3f4", "#1b1c1d"],
+};
 
 function applyThemeMode(mode) {
   const root = document.documentElement;
@@ -17,13 +29,22 @@ function applyThemeMode(mode) {
   updateThemeColorMeta();
 }
 
+function applyColorTheme(theme) {
+  const root = document.documentElement;
+  root.dataset.colorTheme = COLOR_THEME_META_COLORS[theme] ? theme : "gold";
+  try { localStorage.setItem("crm-color-theme", root.dataset.colorTheme); } catch (e) { /* ignore */ }
+  updateThemeColorMeta();
+}
+
 function updateThemeColorMeta() {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) return;
   const isDark = getComputedStyle(document.documentElement).colorScheme === "dark"
     || document.documentElement.dataset.theme === "dark"
     || (!document.documentElement.dataset.theme && themeMediaQuery && themeMediaQuery.matches);
-  meta.setAttribute("content", isDark ? "#17130b" : "#fcf2e5");
+  const colorTheme = document.documentElement.dataset.colorTheme || "gold";
+  const pair = COLOR_THEME_META_COLORS[colorTheme] || COLOR_THEME_META_COLORS.gold;
+  meta.setAttribute("content", isDark ? pair[1] : pair[0]);
 }
 
 function initThemeModeWatcher() {
@@ -418,7 +439,11 @@ document.getElementById("btn-deal-delete").addEventListener("click", deleteDealF
 document.querySelectorAll("#deal-stage-chips .chip").forEach((chip) => {
   chip.addEventListener("click", () => setDealStage(chip.dataset.stage));
 });
+document.querySelectorAll("#deal-currency-toggle button").forEach((btn) => {
+  btn.addEventListener("click", () => setDealCurrency(btn.dataset.currency));
+});
 document.getElementById("deal-contact-row").addEventListener("click", openDealContactPicker);
+document.getElementById("btn-deal-picker-apply").addEventListener("click", applyDealContactPicker);
 
 document.getElementById("btn-deal-picker-cancel").addEventListener("click", () => closeScreen("screen-deal-contact-picker"));
 document.getElementById("deal-picker-search").addEventListener("input", (e) => {
@@ -591,7 +616,13 @@ document.querySelectorAll("#schedule-chips .chip").forEach((chip) => {
     Schedule.renderList();
   });
 });
-document.getElementById("btn-route-today").addEventListener("click", () => Schedule.routeToday());
+document.getElementById("btn-route-today").addEventListener("click", () => openDayPlanner());
+document.getElementById("btn-planner-back").addEventListener("click", () => closeScreen("screen-day-planner"));
+document.getElementById("planner-date").addEventListener("change", async (e) => {
+  plannerDate = e.target.value;
+  await renderPlannerList();
+});
+document.getElementById("btn-planner-route").addEventListener("click", () => getPlannerRoute());
 document.getElementById("btn-cal-prev").addEventListener("click", calendarPrevMonth);
 document.getElementById("btn-cal-next").addEventListener("click", calendarNextMonth);
 
@@ -643,6 +674,16 @@ document.querySelectorAll("#theme-mode-toggle button").forEach((btn) => {
     await Settings.update({ themeMode: mode });
   });
 });
+document.querySelectorAll("#color-theme-grid .color-swatch").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const theme = btn.dataset.colorTheme;
+    document.querySelectorAll("#color-theme-grid .color-swatch").forEach((b) =>
+      b.classList.toggle("active", b === btn)
+    );
+    applyColorTheme(theme);
+    await Settings.update({ colorTheme: theme });
+  });
+});
 
 // ---------------- Wiring: Schedule settings (calendar week start) ----------------
 document.querySelectorAll("#week-start-toggle button").forEach((btn) => {
@@ -688,8 +729,12 @@ document.querySelectorAll("#followup-days-toggle button").forEach((btn) => {
   );
   const settings = await Settings.get();
   applyThemeMode(settings.themeMode || "system");
+  applyColorTheme(settings.colorTheme || "gold");
   document.querySelectorAll("#theme-mode-toggle button").forEach((b) =>
     b.classList.toggle("active", b.dataset.theme === (settings.themeMode || "system"))
+  );
+  document.querySelectorAll("#color-theme-grid .color-swatch").forEach((b) =>
+    b.classList.toggle("active", b.dataset.colorTheme === (settings.colorTheme || "gold"))
   );
   document.querySelectorAll("#week-start-toggle button").forEach((b) =>
     b.classList.toggle("active", Number(b.dataset.weekstart) === settings.weekStart)

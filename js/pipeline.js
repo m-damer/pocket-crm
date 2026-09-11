@@ -25,6 +25,20 @@ function dealMoney(amount, currency) {
   return `${currency || "USD"} ${n.toFixed(2)}`;
 }
 
+// Deals can each carry their own currency (USD or SYP) — totals across a
+// mixed set are shown per-currency, never converted into one number.
+// Converting would need an exchange rate, and exchange rates move; showing
+// "USD 500.00 · SYP 200,000.00" side by side is honest about what's
+// actually known, where a single blended total wouldn't be.
+function formatDealTotals(dealsList) {
+  const totals = {};
+  dealsList.forEach((d) => {
+    const cur = d.currency || "USD";
+    totals[cur] = (totals[cur] || 0) + (Number(d.amount) || 0);
+  });
+  return Object.keys(totals).sort().map((cur) => dealMoney(totals[cur], cur)).join(" \u00b7 ");
+}
+
 let pipelineEnabled = true;
 
 async function loadPipelineEnabled() {
@@ -49,42 +63,43 @@ function applyPipelineVisibility() {
 }
 
 // ---------------- Pipeline board ----------------
+function dealContactsSummary(deal, contactsById) {
+  const contacts = (deal.contactIds || []).map((id) => contactsById[id]).filter(Boolean);
+  if (contacts.length === 0) return "";
+  if (contacts.length <= 2) return contacts.map(fullName).join(", ");
+  return `${fullName(contacts[0])} ${t("deal_contacts_plus_more", { n: contacts.length - 1 })}`;
+}
+
 function dealCardHTML(deal, contactsById) {
-  const contact = deal.contactId ? contactsById[deal.contactId] : null;
+  const contactsLine = dealContactsSummary(deal, contactsById);
   return `
     <div class="deal-card" data-id="${deal.id}">
       <p class="deal-title">${escapeHTML(deal.title || t("deal_title_fallback"))}</p>
-      ${contact ? `<p class="deal-contact">${escapeHTML(fullName(contact))}</p>` : ""}
-      <p class="deal-amount">${escapeHTML(dealMoney(deal.amount, currentCurrency))}</p>
+      ${contactsLine ? `<p class="deal-contact">${escapeHTML(contactsLine)}</p>` : ""}
+      <p class="deal-amount">${escapeHTML(dealMoney(deal.amount, deal.currency))}</p>
     </div>
   `;
 }
 
-let currentCurrency = "USD";
-
 async function renderPipelineBoard() {
   const board = document.getElementById("pipeline-board");
   if (!board) return;
-  const [deals, contacts, settings] = await Promise.all([Deals.getAll(), DB.getAll(), Settings.get()]);
-  currentCurrency = settings.currency || "USD";
+  const [deals, contacts] = await Promise.all([Deals.getAll(), DB.getAll()]);
   const contactsById = {};
   contacts.forEach((c) => { contactsById[c.id] = c; });
 
-  const openTotal = deals
-    .filter((d) => d.stage !== "won" && d.stage !== "lost")
-    .reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  const openDeals = deals.filter((d) => d.stage !== "won" && d.stage !== "lost");
   document.getElementById("pipeline-summary").textContent = deals.length === 0
     ? t("pipeline_empty_summary")
-    : t("pipeline_summary", { amount: dealMoney(openTotal, currentCurrency), count: I18N.plural(deals.length, "deal_count", "deal_count_plural") });
+    : t("pipeline_summary", { amount: formatDealTotals(openDeals) || dealMoney(0, "USD"), count: I18N.plural(deals.length, "deal_count", "deal_count_plural") });
 
   board.innerHTML = DEAL_STAGES.map((stage) => {
     const stageDeals = deals.filter((d) => d.stage === stage);
-    const stageTotal = stageDeals.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
     return `
       <div class="pipeline-column">
         <div class="pipeline-column-header">
           <p class="pipeline-column-title" style="color:${DEAL_STAGE_META[stage].color}">${dealStageLabel(stage)}</p>
-          <p class="pipeline-column-meta">${I18N.plural(stageDeals.length, "deal_count", "deal_count_plural")}${stageDeals.length ? " \u00b7 " + dealMoney(stageTotal, currentCurrency) : ""}</p>
+          <p class="pipeline-column-meta">${I18N.plural(stageDeals.length, "deal_count", "deal_count_plural")}${stageDeals.length ? " \u00b7 " + formatDealTotals(stageDeals) : ""}</p>
         </div>
         <div class="pipeline-column-body" data-stage="${stage}">
           ${stageDeals.map((d) => dealCardHTML(d, contactsById)).join("")}
@@ -101,12 +116,15 @@ async function renderPipelineBoard() {
 // ---------------- Deal form (add/edit) ----------------
 let dealFormEditingId = null;
 let dealFormStage = "new";
-let dealFormContactId = null;
+let dealFormContactIds = [];
+let dealFormCurrency = "USD";
 
 async function openDealForm(id, presets) {
   dealFormEditingId = id || null;
   dealFormStage = (presets && presets.stage) || "new";
-  dealFormContactId = (presets && presets.contactId) || null;
+  dealFormContactIds = (presets && presets.contactId) ? [presets.contactId] : [];
+  const settings = await Settings.get();
+  dealFormCurrency = settings.currency === "SYP" ? "SYP" : "USD";
 
   document.getElementById("deal-form-title").textContent = id ? t("deal_form_title_edit") : t("deal_form_title_new");
   document.getElementById("deal-title").value = "";
@@ -123,10 +141,12 @@ async function openDealForm(id, presets) {
       document.getElementById("deal-close-date").value = deal.expectedCloseDate || "";
       document.getElementById("deal-notes").value = deal.notes || "";
       dealFormStage = deal.stage;
-      dealFormContactId = deal.contactId;
+      dealFormContactIds = deal.contactIds || [];
+      dealFormCurrency = deal.currency === "SYP" ? "SYP" : "USD";
     }
   }
   setDealStage(dealFormStage);
+  setDealCurrency(dealFormCurrency);
   await refreshDealContactLabel();
   showScreen("screen-deal-form");
 }
@@ -138,14 +158,27 @@ function setDealStage(stage) {
   );
 }
 
+function setDealCurrency(currency) {
+  dealFormCurrency = currency;
+  document.querySelectorAll("#deal-currency-toggle button").forEach((b) =>
+    b.classList.toggle("active", b.dataset.currency === currency)
+  );
+}
+
 async function refreshDealContactLabel() {
   const label = document.getElementById("deal-contact-label");
-  if (!dealFormContactId) {
+  if (!dealFormContactIds.length) {
     label.textContent = t("deal_no_contact");
     return;
   }
-  const c = await DB.get(dealFormContactId);
-  label.textContent = c ? fullName(c) : t("deal_no_contact");
+  const contacts = (await Promise.all(dealFormContactIds.map((id) => DB.get(id)))).filter(Boolean);
+  if (contacts.length === 0) {
+    label.textContent = t("deal_no_contact");
+  } else if (contacts.length <= 2) {
+    label.textContent = contacts.map(fullName).join(", ");
+  } else {
+    label.textContent = `${fullName(contacts[0])} ${t("deal_contacts_plus_more", { n: contacts.length - 1 })}`;
+  }
 }
 
 async function saveDealForm() {
@@ -156,8 +189,9 @@ async function saveDealForm() {
   }
   const patch = {
     title,
-    contactId: dealFormContactId,
+    contactIds: dealFormContactIds,
     amount: Number(document.getElementById("deal-amount").value) || 0,
+    currency: dealFormCurrency,
     stage: dealFormStage,
     expectedCloseDate: document.getElementById("deal-close-date").value,
     notes: document.getElementById("deal-notes").value.trim(),
@@ -184,8 +218,11 @@ async function deleteDealForm() {
   if (Contacts.currentId) await renderDealsTab(Contacts.currentId);
 }
 
-// ---------------- Deal form: contact picker ----------------
+// ---------------- Deal form: contact picker (multi-select) ----------------
+let dealPickerSelected = new Set();
+
 async function openDealContactPicker() {
+  dealPickerSelected = new Set(dealFormContactIds);
   document.getElementById("deal-picker-search").value = "";
   await renderDealContactPickerList("");
   showScreen("screen-deal-contact-picker");
@@ -199,13 +236,9 @@ async function renderDealContactPickerList(query) {
     ? all.filter((c) => (fullName(c) + " " + (c.company || "")).toLowerCase().includes(q))
     : all;
 
-  const noneRow = `
-    <div class="more-row" id="deal-picker-none" style="cursor:pointer">
-      <div class="txt"><p class="t">${t("deal_no_contact")}</p></div>
-    </div>
-  `;
-  wrap.innerHTML = noneRow + filtered.map((c) => `
-    <div class="contact-row" data-id="${c.id}">
+  wrap.innerHTML = filtered.map((c) => `
+    <div class="contact-row select-mode" data-id="${c.id}">
+      <span class="select-check${dealPickerSelected.has(c.id) ? " checked" : ""}"></span>
       ${c.photoDataUrl
         ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover" />`
         : `<div class="avatar" style="background:${CAT_META[c.category].color}">${initials(c)}</div>`}
@@ -216,18 +249,20 @@ async function renderDealContactPickerList(query) {
     </div>
   `).join("");
 
-  document.getElementById("deal-picker-none").addEventListener("click", () => {
-    dealFormContactId = null;
-    closeScreen("screen-deal-contact-picker");
-    refreshDealContactLabel();
-  });
   wrap.querySelectorAll(".contact-row").forEach((row) => {
     row.addEventListener("click", () => {
-      dealFormContactId = row.dataset.id;
-      closeScreen("screen-deal-contact-picker");
-      refreshDealContactLabel();
+      const id = row.dataset.id;
+      if (dealPickerSelected.has(id)) dealPickerSelected.delete(id);
+      else dealPickerSelected.add(id);
+      row.querySelector(".select-check").classList.toggle("checked", dealPickerSelected.has(id));
     });
   });
+}
+
+function applyDealContactPicker() {
+  dealFormContactIds = Array.from(dealPickerSelected);
+  closeScreen("screen-deal-contact-picker");
+  refreshDealContactLabel();
 }
 
 // ---------------- Contact detail: Deals tab ----------------
@@ -235,8 +270,6 @@ async function renderDealsTab(contactId) {
   const wrap = document.getElementById("detail-tab-deals");
   if (!wrap) return;
   const deals = await Deals.forContact(contactId);
-  const settings = await Settings.get();
-  const currency = settings.currency || "USD";
   wrap.innerHTML = `
     <div style="padding:4px 16px 0">
       <button type="button" class="btn-secondary" id="btn-add-deal" style="padding:9px 16px;width:100%">${t("btn_add_deal")}</button>
@@ -248,7 +281,7 @@ async function renderDealsTab(contactId) {
           <div class="deal-card" data-id="${d.id}" style="margin-bottom:8px">
             <p class="deal-title">${escapeHTML(d.title || t("deal_title_fallback"))}</p>
             <p class="deal-contact" style="color:${DEAL_STAGE_META[d.stage].color}">${dealStageLabel(d.stage)}</p>
-            <p class="deal-amount">${escapeHTML(dealMoney(d.amount, currency))}</p>
+            <p class="deal-amount">${escapeHTML(dealMoney(d.amount, d.currency))}</p>
           </div>
         `).join("")}
     </div>

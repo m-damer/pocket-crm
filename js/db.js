@@ -342,7 +342,7 @@ const Events = {
     const now = new Date().toISOString();
     const record = {
       id: uid("e"),
-      type: "task", // task | meeting
+      type: "task", // task | meeting | visit
       title: "",
       when: now, // ISO datetime of the event
       contactId: null,
@@ -350,6 +350,9 @@ const Events = {
       notified: false,
       completed: false,
       notes: "",
+      purpose: "", // visit-only: why you're going
+      outcome: "", // visit-only: filled in after the visit happens
+      visitOrder: 0, // visit-only: manual routing sequence within a day, independent of `when`
       createdAt: now,
       updatedAt: now,
       ...event,
@@ -383,12 +386,25 @@ const Events = {
 // change, but nothing in the UI nudges you to).
 const DEAL_STAGES = ["new", "contacted", "proposal", "negotiation", "won", "lost"];
 
+// Deals used to link to a single contact via `contactId`. Existing records
+// only have that field; new ones use `contactIds` (an array, can be
+// empty). Normalizing at read time — rather than a one-time migration
+// pass — means old records keep working with zero special-casing anywhere
+// else in the app, today or if the schema shifts again later.
+function normalizeDeal(record) {
+  if (!record) return record;
+  if (!record.contactIds) {
+    record.contactIds = record.contactId ? [record.contactId] : [];
+  }
+  return record;
+}
+
 const Deals = {
   async getAll() {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const req = db.transaction(STORE_DEALS, "readonly").objectStore(STORE_DEALS).getAll();
-      req.onsuccess = () => resolve(req.result.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+      req.onsuccess = () => resolve(req.result.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).map(normalizeDeal));
       req.onerror = () => reject(req.error);
     });
   },
@@ -397,7 +413,7 @@ const Deals = {
     const db = await openDB();
     return new Promise((resolve, reject) => {
       const req = db.transaction(STORE_DEALS, "readonly").objectStore(STORE_DEALS).get(id);
-      req.onsuccess = () => resolve(req.result);
+      req.onsuccess = () => resolve(normalizeDeal(req.result));
       req.onerror = () => reject(req.error);
     });
   },
@@ -407,8 +423,9 @@ const Deals = {
     const record = {
       id: uid("dl"),
       title: "",
-      contactId: null,
+      contactIds: [],
       amount: 0,
+      currency: "USD",
       stage: "new",
       expectedCloseDate: "", // ISO date, optional
       notes: "",
@@ -420,23 +437,25 @@ const Deals = {
     return record;
   },
 
-  // Stage changes are logged onto the linked contact's own activity
-  // timeline (when there is one) — same "quiet auto-log" approach
+  // Stage changes are logged onto every linked contact's own activity
+  // timeline (when there are any) — same "quiet auto-log" approach
   // DB.update() already uses for category changes, so a deal moving
   // through the pipeline shows up right alongside everything else that
-  // happened with that contact.
+  // happened with each of those contacts.
   async update(id, patch) {
     const existing = await this.get(id);
     if (!existing) throw new Error("Deal not found");
     const updated = { ...existing, ...patch, updatedAt: new Date().toISOString() };
     await withStore(STORE_DEALS, "readwrite", (store) => store.put(updated));
-    if (patch.stage && patch.stage !== existing.stage && existing.contactId) {
-      const contact = await DB.get(existing.contactId);
-      if (contact) {
-        await DB.addActivity(existing.contactId, {
-          type: "deal_stage_changed",
-          text: t("activity_deal_stage_changed", { title: existing.title || t("deal_title_fallback"), stage: t("deal_stage_" + patch.stage) }),
-        });
+    if (patch.stage && patch.stage !== existing.stage && existing.contactIds && existing.contactIds.length) {
+      for (const contactId of existing.contactIds) {
+        const contact = await DB.get(contactId);
+        if (contact) {
+          await DB.addActivity(contactId, {
+            type: "deal_stage_changed",
+            text: t("activity_deal_stage_changed", { title: existing.title || t("deal_title_fallback"), stage: t("deal_stage_" + patch.stage) }),
+          });
+        }
       }
     }
     return updated;
@@ -448,7 +467,7 @@ const Deals = {
 
   async forContact(contactId) {
     const all = await this.getAll();
-    return all.filter((d) => d.contactId === contactId);
+    return all.filter((d) => (d.contactIds || []).includes(contactId));
   },
 };
 
@@ -549,6 +568,7 @@ const Settings = {
           followUpDays: 14, // days of inactivity before a customer/lead contact is flagged
           pipelineEnabled: true, // whether the Deals/Pipeline tab, contact tab, and quick-add entry are shown at all
           themeMode: "system", // "light" | "dark" | "system" — which color scheme the app renders in
+          colorTheme: "gold", // gold | green | blue | terracotta | violet | teal | rose | slate
           contactFieldConfig: DEFAULT_CONTACT_FIELD_CONFIG,
           tags: [], // {id, name, color}
           tagsMigrated: false,
