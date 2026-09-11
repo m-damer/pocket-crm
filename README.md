@@ -2,7 +2,35 @@
 
 A CRM app you install on your phone like a normal app, with **no Play Store, no account, and no server** — all your contacts live only on your device.
 
-## Searchable contact picker in Schedule, and a capped "Upcoming" block (this update)
+## 8 color themes (this update)
+Phase 4, the last item on the current development plan — done.
+
+- **8 full color themes to choose from**: the original gold, plus Green, Ocean Blue, Terracotta, Violet, Teal, Rose, and Slate (a muted neutral option) — a circle-swatch picker in Settings, right below the existing Light/Dark/System control.
+- **Every theme generated the same scientific way as the original redesign** — directly from Google's own color-science library, not eyeballed — and each one has its own complete light *and* dark variant, so all 16 combinations were built and verified, not just assumed to work.
+- **Found and fixed a real issue while building this**: the first pass at "Slate" (meant to be a muted, neutral option) came out nearly identical to "Ocean Blue" — the color algorithm's default scheme boosts saturation even for a desaturated seed. Switched that one specifically to the color-science library's dedicated muted-palette mode, which fixed it properly. Verified by actually comparing every theme's color against every other theme's, not just checking each one in isolation.
+- Category colors (Customer/Lead/Lost) and the phone's status-bar color both stay correctly in sync no matter which theme is active.
+- Switching is instant and remembered — no flash of the wrong color on next launch, in any theme/mode combination.
+- Verified with 25 automated tests plus a full visual pass across all 8 themes in both light and dark (16 screenshots), plus Arabic.
+
+## Visit planner
+Phase 3 of the current development plan — extends Schedule rather than duplicating it.
+
+- **A new "Visit" type**, alongside Task and Meeting, with two fields the other two don't need: a purpose (why you're going) and an outcome (filled in after, once you know how it went).
+- **A real "Plan visits" screen**, reached from the same header icon that used to fire off a route instantly — pick a date, see every visit scheduled for that day, and manually reorder them with up/down arrows before routing (the order in the calendar isn't always the order that makes sense to actually drive them in).
+- **"Get full route" now lives inside that screen** as a clear, full-width button, instead of being a small icon that silently built a route the moment you tapped it.
+- Found and fixed a real pre-existing bug while in this code: the task/meeting badge colors were still hardcoded hex values left over from the app's original emerald-green branding, never updated during the Material 3 redesign — they were invisible in dark mode. Now pulled from the same design tokens as everything else, Visit included.
+- Verified with 21 automated tests plus a full visual pass in both English and Arabic.
+
+## Pipeline: multi-currency deals and multi-contact deals
+Phases 1 and 2 of the current development plan.
+
+- **Each deal now has its own currency (USD or SYP)**, chosen when creating or editing it — no automatic conversion between them, since that would need an exchange rate and exchange rates move. The Pipeline board's totals (both the overall summary and each stage column) show every currency in play side by side, e.g. `USD 3200.00 · SYP 500000.00`, instead of forcing everything into one misleading blended number.
+- **A deal can now link to more than one contact** — useful for a company deal involving more than one decision-maker. Picking contacts now works like the QR and bulk-tag pickers: tap to check/uncheck as many as you want, then Apply. The deal card and form show the linked names (or "+N more" once there are several).
+- Existing deals saved under the old one-contact-per-deal format keep working automatically — no migration step, no risk of losing a link.
+- Moving a multi-contact deal to a new stage now logs that activity to **every** linked contact's timeline, not just one.
+- Verified with 21 automated tests plus a full visual pass in both English and Arabic.
+
+## Searchable contact picker in Schedule, and a capped "Upcoming" block
 - **Linking a contact to a task or meeting now works like Pipeline's deal picker**: instead of a plain dropdown with every contact listed flat, tapping "Link to contact" opens a real search screen — type to filter by name or company, tap to select. Same component Pipeline already used, just reused here for consistency.
 - **The "Upcoming" section on a contact's Info tab no longer grows the whole page** when there are a lot of open tasks/meetings — it's now capped to roughly 3 rows tall, with its own internal scroll for anything beyond that (a slightly visible edge of the next row peeks through, so it's clear there's more to scroll to).
 - **Tapping any activity in that list now opens its full details** — reuses the same event-detail screen already used everywhere else in the app (date, time, linked contact, status, edit/delete), rather than leaving those rows inert like before.

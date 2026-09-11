@@ -24,9 +24,13 @@
     if (theme === "light" || theme === "dark") {
       document.documentElement.dataset.theme = theme;
     }
+    var colorTheme = localStorage.getItem("crm-color-theme") || "gold";
+    document.documentElement.dataset.colorTheme = colorTheme;
     var isDark = theme === "dark" || (theme !== "light" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var THEME_COLORS = { gold: ["#fcf2e5", "#17130b"], green: ["#f2f5ea", "#191d16"], blue: ["#f2f3f9", "#191c20"], terracotta: ["#fff1ec", "#231a16"], violet: ["#f9f1f9", "#1e1a20"], teal: ["#eff5f3", "#161d1c"], rose: ["#fff0f3", "#22191c"], slate: ["#f5f3f4", "#1b1c1d"] };
+    var pair = THEME_COLORS[colorTheme] || THEME_COLORS.gold;
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", isDark ? "#17130b" : "#fcf2e5");
+    if (meta) meta.setAttribute("content", isDark ? pair[1] : pair[0]);
   } catch (e) { /* falls back to the static light theme-color below until Settings loads */ }
 })();
 </script>
@@ -89,7 +93,7 @@
   <section class="view" id="view-schedule" hidden>
     <header class="header">
       <h1 data-i18n="schedule_title">Schedule</h1>
-      <button class="icon-btn" id="btn-route-today" title="Route today's meetings" data-i18n-title="btn_route_today_title">
+      <button class="icon-btn" id="btn-route-today" title="Plan visits" data-i18n-title="btn_day_planner_title">
         <svg viewBox="0 -960 960 960" fill="currentColor"><path d="M320-360h80v-120h140v100l140-140-140-140v100H360q-17 0-28.5 11.5T320-520v160ZM480-80q-15 0-29.5-6T424-104L104-424q-12-12-18-26.5T80-480q0-15 6-29.5t18-26.5l320-320q12-12 26.5-18t29.5-6q15 0 29.5 6t26.5 18l320 320q12 12 18 26.5t6 29.5q0 15-6 29.5T856-424L536-104q-12 12-26.5 18T480-80ZM320-320l160 160 320-320-320-320-320 320 160 160Zm160-160Z"/></svg>
       </button>
     </header>
@@ -143,6 +147,19 @@
           <button type="button" class="sel-weekday" data-theme="light" data-i18n="theme_light">Light</button>
           <button type="button" class="sel-weekday active" data-theme="system" data-i18n="theme_system">System</button>
           <button type="button" class="sel-weekday" data-theme="dark" data-i18n="theme_dark">Dark</button>
+        </div>
+      </div>
+      <p class="section-title" data-i18n="section_color_theme">Theme color</p>
+      <div class="more-card" style="padding:14px 12px">
+        <div class="color-theme-grid" id="color-theme-grid">
+          <button type="button" class="color-swatch active" data-color-theme="gold" style="--swatch-color:#765a0b" title="Gold" data-i18n-title="colortheme_gold"></button>
+          <button type="button" class="color-swatch" data-color-theme="green" style="--swatch-color:#446832" title="Green" data-i18n-title="colortheme_green"></button>
+          <button type="button" class="color-swatch" data-color-theme="blue" style="--swatch-color:#32628d" title="Ocean Blue" data-i18n-title="colortheme_blue"></button>
+          <button type="button" class="color-swatch" data-color-theme="terracotta" style="--swatch-color:#8e4d30" title="Terracotta" data-i18n-title="colortheme_terracotta"></button>
+          <button type="button" class="color-swatch" data-color-theme="violet" style="--swatch-color:#6e528a" title="Violet" data-i18n-title="colortheme_violet"></button>
+          <button type="button" class="color-swatch" data-color-theme="teal" style="--swatch-color:#006a63" title="Teal" data-i18n-title="colortheme_teal"></button>
+          <button type="button" class="color-swatch" data-color-theme="rose" style="--swatch-color:#8b4a62" title="Rose" data-i18n-title="colortheme_rose"></button>
+          <button type="button" class="color-swatch" data-color-theme="slate" style="--swatch-color:#55606a" title="Slate" data-i18n-title="colortheme_slate"></button>
         </div>
       </div>
       <p class="section-title" data-i18n="section_language">Language</p>
@@ -473,12 +490,19 @@
     <div class="view">
       <div class="form-group"><label data-i18n="label_deal_title">Title</label><input type="text" id="deal-title" placeholder="e.g. Website redesign" data-i18n-ph="ph_deal_title" /></div>
       <div class="form-group">
-        <label data-i18n="label_deal_contact">Linked contact</label>
+        <label data-i18n="label_deal_contact">Linked contacts</label>
         <div class="more-row" id="deal-contact-row" style="cursor:pointer;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px">
           <div class="txt"><p class="t" id="deal-contact-label" data-i18n="deal_no_contact">No contact</p></div>
         </div>
       </div>
       <div class="form-group"><label data-i18n="label_deal_amount">Amount</label><input type="number" inputmode="decimal" min="0" step="0.01" id="deal-amount" placeholder="0.00" /></div>
+      <div class="form-group">
+        <label data-i18n="label_deal_currency">Currency</label>
+        <div class="segmented" id="deal-currency-toggle" style="width:100%">
+          <button type="button" class="sel-weekday active" data-currency="USD">USD</button>
+          <button type="button" class="sel-weekday" data-currency="SYP">SYP</button>
+        </div>
+      </div>
       <div class="form-group">
         <label data-i18n="label_deal_stage">Stage</label>
         <div class="chips" id="deal-stage-chips">
@@ -513,6 +537,9 @@
         </div>
       </div>
       <div id="deal-contact-picker-list" style="padding:10px 12px 4px"></div>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-deal-picker-apply" style="width:100%" data-i18n="btn_apply">Apply</button>
+      </div>
     </div>
   </div>
 
@@ -768,6 +795,7 @@
         <div class="segmented" id="ev-type">
           <button type="button" class="sel-task active" data-type="task" data-i18n="event_type_task_seg">Task</button>
           <button type="button" class="sel-meeting" data-type="meeting" data-i18n="event_type_meeting_seg">Meeting</button>
+          <button type="button" class="sel-visit" data-type="visit" data-i18n="event_type_visit_seg">Visit</button>
         </div>
       </div>
       <div class="form-group"><label data-i18n="label_title">Title</label><input type="text" id="ev-title" placeholder="e.g. Call about proposal" data-i18n-ph="ph_event_title" /></div>
@@ -780,6 +808,8 @@
           <div class="txt"><p class="t" id="ev-contact-label" data-i18n="deal_no_contact">No contact</p></div>
         </div>
       </div>
+      <div class="form-group" id="ev-purpose-group" hidden><label data-i18n="label_visit_purpose">Purpose of visit</label><input type="text" id="ev-purpose" placeholder="e.g. Deliver samples, follow up on order" data-i18n-ph="ph_visit_purpose" /></div>
+      <div class="form-group" id="ev-outcome-group" hidden><label data-i18n="label_visit_outcome">Outcome (fill in after the visit)</label><textarea id="ev-outcome" placeholder="What happened during the visit?" data-i18n-ph="ph_visit_outcome"></textarea></div>
       <div class="form-group checkbox-row">
         <label class="checkbox-label"><input type="checkbox" id="ev-remind" /> <span data-i18n="label_remind_me">Remind me (while the app is open)</span></label>
       </div>
@@ -809,6 +839,26 @@
         </div>
       </div>
       <div id="ev-contact-picker-list" style="padding:10px 12px 4px"></div>
+    </div>
+  </div>
+
+  <!-- ===== DAY PLANNER (visit routing) ===== -->
+  <div class="screen" id="screen-day-planner">
+    <header class="header">
+      <button class="icon-btn icon-back" id="btn-planner-back"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"/></svg></button>
+      <h1 data-i18n="day_planner_title">Plan visits</h1>
+      <div style="width:36px"></div>
+    </header>
+    <div class="view">
+      <div class="form-group" style="padding-top:14px"><input type="date" id="planner-date" /></div>
+      <p class="hint-text" style="margin:0 16px 10px" data-i18n="hint_day_planner">Reorder with the arrows to set the order the route should visit them in.</p>
+      <div id="planner-list" style="padding:0 16px"></div>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-planner-route" style="width:100%">
+          <svg viewBox="0 -960 960 960" fill="currentColor" style="width:18px;height:18px;vertical-align:-3px;margin-inline-end:6px"><path d="M360-120q-66 0-113-47t-47-113v-327q-35-13-57.5-43.5T120-720q0-50 35-85t85-35q50 0 85 35t35 85q0 39-22.5 69.5T280-607v327q0 33 23.5 56.5T360-200q33 0 56.5-23.5T440-280v-400q0-66 47-113t113-47q66 0 113 47t47 113v327q35 13 57.5 43.5T840-240q0 50-35 85t-85 35q-50 0-85-35t-35-85q0-39 22.5-70t57.5-43v-327q0-33-23.5-56.5T600-760q-33 0-56.5 23.5T520-680v400q0 66-47 113t-113 47ZM240-680q17 0 28.5-11.5T280-720q0-17-11.5-28.5T240-760q-17 0-28.5 11.5T200-720q0 17 11.5 28.5T240-680Zm480 480q17 0 28.5-11.5T760-240q0-17-11.5-28.5T720-280q-17 0-28.5 11.5T680-240q0 17 11.5 28.5T720-200ZM240-720Zm480 480Z"/></svg>
+          <span data-i18n="btn_get_full_route">Get full route</span>
+        </button>
+      </div>
     </div>
   </div>
 
