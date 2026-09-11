@@ -572,6 +572,11 @@ document.getElementById("btn-ev-cancel").addEventListener("click", closeAllScree
 document.getElementById("btn-ev-cancel-2").addEventListener("click", closeAllScreens);
 document.getElementById("btn-ev-save").addEventListener("click", saveEventForm);
 document.getElementById("btn-ev-delete").addEventListener("click", deleteCurrentEvent);
+document.getElementById("ev-contact-row").addEventListener("click", openEventContactPicker);
+document.getElementById("btn-ev-picker-cancel").addEventListener("click", () => closeScreen("screen-event-contact-picker"));
+document.getElementById("ev-picker-search").addEventListener("input", (e) => {
+  renderEventContactPickerList(e.target.value);
+});
 document.getElementById("btn-ev-detail-back").addEventListener("click", closeAllScreens);
 document.getElementById("btn-ev-detail-edit").addEventListener("click", () => openEventForm(eventDetailId));
 document.getElementById("btn-ev-detail-delete").addEventListener("click", deleteEventFromDetail);

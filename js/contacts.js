@@ -184,14 +184,22 @@ async function renderLinkedEvents(contactId) {
   return `
     <div class="field-list" style="margin-top:2px">
       <p class="label" style="margin:6px 6px 6px">${t("label_upcoming")}</p>
-      ${events.map((e) => `
-        <div class="field-row">
-          <p class="value">${escapeHTML(e.title || t("untitled_event"))}</p>
-          <p class="label" style="margin-top:3px">${new Date(e.when).toLocaleDateString(I18N.localeTag(), { day: "numeric", month: "short" })} · ${new Date(e.when).toLocaleTimeString(I18N.localeTag(), { hour: "2-digit", minute: "2-digit" })}</p>
-        </div>
-      `).join("")}
+      <div class="linked-events-scroll">
+        ${events.map((e) => `
+          <div class="field-row linked-event-row" data-open="${e.id}" style="cursor:pointer">
+            <p class="value">${escapeHTML(e.title || t("untitled_event"))}</p>
+            <p class="label" style="margin-top:3px">${new Date(e.when).toLocaleDateString(I18N.localeTag(), { day: "numeric", month: "short" })} · ${new Date(e.when).toLocaleTimeString(I18N.localeTag(), { hour: "2-digit", minute: "2-digit" })}</p>
+          </div>
+        `).join("")}
+      </div>
     </div>
   `;
+}
+
+function wireLinkedEventRows() {
+  document.querySelectorAll("#detail-tab-info .linked-event-row").forEach((row) => {
+    row.addEventListener("click", () => openEventDetail(row.dataset.open));
+  });
 }
 
 // ---------------- Info tab field groups (order/visibility driven by Settings) ----------------
@@ -327,6 +335,7 @@ async function renderDetail() {
   `;
 
   document.getElementById("detail-tab-info").innerHTML = await renderInfoTab(c);
+  wireLinkedEventRows();
 
   renderActivityTab(c);
 

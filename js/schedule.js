@@ -196,11 +196,61 @@ const Schedule = {
 // ---------------- Add / Edit event form ----------------
 let eventEditingId = null;
 let eventType = "task";
+let evFormContactId = null;
 
-function populateContactSelect(selectedId) {
-  const sel = document.getElementById("ev-contact");
-  sel.innerHTML = `<option value="">${t("no_linked_contact")}</option>` +
-    Contacts.all.map((c) => `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>${escapeHTML(fullName(c))}</option>`).join("");
+async function refreshEventContactLabel() {
+  const label = document.getElementById("ev-contact-label");
+  if (!evFormContactId) {
+    label.textContent = t("no_linked_contact");
+    return;
+  }
+  const c = await DB.get(evFormContactId);
+  label.textContent = c ? fullName(c) : t("no_linked_contact");
+}
+
+async function openEventContactPicker() {
+  document.getElementById("ev-picker-search").value = "";
+  await renderEventContactPickerList("");
+  showScreen("screen-event-contact-picker");
+}
+
+async function renderEventContactPickerList(query) {
+  const wrap = document.getElementById("ev-contact-picker-list");
+  const all = await DB.getAll();
+  const q = (query || "").trim().toLowerCase();
+  const filtered = q
+    ? all.filter((c) => (fullName(c) + " " + (c.company || "")).toLowerCase().includes(q))
+    : all;
+
+  const noneRow = `
+    <div class="more-row" id="ev-picker-none" style="cursor:pointer">
+      <div class="txt"><p class="t">${t("no_linked_contact")}</p></div>
+    </div>
+  `;
+  wrap.innerHTML = noneRow + filtered.map((c) => `
+    <div class="contact-row" data-id="${c.id}">
+      ${c.photoDataUrl
+        ? `<img class="avatar" src="${c.photoDataUrl}" style="object-fit:cover" />`
+        : `<div class="avatar" style="background:${CAT_META[c.category].color}">${initials(c)}</div>`}
+      <div class="contact-info">
+        <p class="contact-name">${escapeHTML(fullName(c))}</p>
+        <p class="contact-sub">${escapeHTML(c.company || primaryPhone(c) || primaryEmail(c) || "")}</p>
+      </div>
+    </div>
+  `).join("");
+
+  document.getElementById("ev-picker-none").addEventListener("click", () => {
+    evFormContactId = null;
+    closeScreen("screen-event-contact-picker");
+    refreshEventContactLabel();
+  });
+  wrap.querySelectorAll(".contact-row").forEach((row) => {
+    row.addEventListener("click", () => {
+      evFormContactId = row.dataset.id;
+      closeScreen("screen-event-contact-picker");
+      refreshEventContactLabel();
+    });
+  });
 }
 
 function setEventType(type) {
@@ -220,7 +270,8 @@ async function openEventForm(id, presets) {
   const defaults = toLocalInputParts(now.toISOString());
   document.getElementById("ev-date").value = defaults.date;
   document.getElementById("ev-time").value = defaults.time;
-  populateContactSelect((presets && presets.contactId) || null);
+  evFormContactId = (presets && presets.contactId) || null;
+  await refreshEventContactLabel();
   setEventType(eventType);
   document.getElementById("ev-delete").style.display = id ? "block" : "none";
 
@@ -233,7 +284,8 @@ async function openEventForm(id, presets) {
       const parts = toLocalInputParts(e.when);
       document.getElementById("ev-date").value = parts.date;
       document.getElementById("ev-time").value = parts.time;
-      populateContactSelect(e.contactId);
+      evFormContactId = e.contactId || null;
+      await refreshEventContactLabel();
       setEventType(e.type);
     }
   }
@@ -307,7 +359,7 @@ async function saveEventForm() {
     title,
     type: eventType,
     when: combineLocal(date, time),
-    contactId: document.getElementById("ev-contact").value || null,
+    contactId: evFormContactId || null,
     remind,
     notes: document.getElementById("ev-notes").value,
   };
